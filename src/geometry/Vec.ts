@@ -13,7 +13,7 @@ import {
     RADIANS_PER_DEGREE,
 } from './constants.js';
 import { equalWithinRelativeEpsilon, expressionCodeForNumber, saturate } from './math.js';
-import { AffineMatrix, setVec } from './Matrix.js';
+import { AffineMatrix, type TransformArgs } from './Matrix.js';
 
 /**
  * 2D Vector class with x and y coordinates.
@@ -22,67 +22,44 @@ import { AffineMatrix, setVec } from './Matrix.js';
  * const v = new Vec(3, 4);
  * v.length(); // 5
  * v.normalize(); // v is now (0.6, 0.8)
- *
- * @example
- * // Chaining
- * const v = new Vec(1, 2);
- * v.add(new Vec(3, 4)).mulScalar(2);
- *
- * @example
- * // Cloning to avoid mutation
- * const original = new Vec(1, 2);
- * const copy = original.clone().mulScalar(2);
  */
 export class Vec {
     static displayName = 'Vec';
 
+    x: number;
+    y: number;
+
     /**
      * Create a 2D vector.
-     * @param {number} [x=0] - X component. If y is undefined, both x and y will be set to this value.
-     * @param {number} [y] - Y component. If undefined, defaults to x.
+     * @param x - X component. If y is undefined, both x and y will be set to this value.
+     * @param y - Y component. If undefined, defaults to x.
      */
-    constructor(x, y) {
+    constructor(x?: number, y?: number) {
         this.x = x === undefined ? 0 : x;
         this.y = y === undefined ? this.x : y;
     }
 
-    /**
-     * Create a copy of this vector.
-     * @returns {Vec}
-     */
-    clone() {
+    /** Create a copy of this vector. */
+    clone(): Vec {
         return new Vec(this.x, this.y);
     }
 
-    /**
-     * Set both components.
-     * @param {number} x
-     * @param {number} y
-     * @returns {Vec} this
-     */
-    set(x, y) {
+    /** Set both components. */
+    set(x: number, y: number): Vec {
         this.x = x;
         this.y = y;
         return this;
     }
 
-    /**
-     * Copy components from another vector.
-     * @param {Vec} v
-     * @returns {Vec} this
-     */
-    copy(v) {
+    /** Copy components from another vector. */
+    copy(v: Vec): Vec {
         this.x = v.x;
         this.y = v.y;
         return this;
     }
 
-    /**
-     * Apply an affine transformation matrix.
-     * @param {AffineMatrix} affineMatrix
-     * @returns {Vec} this
-     */
-    affineTransform(affineMatrix) {
+    /** Apply an affine transformation matrix. */
+    affineTransform(affineMatrix: AffineMatrix): Vec {
         const { x, y } = this;
         const { a, b, c, d, tx, ty } = affineMatrix;
         this.x = a * x + c * y + tx;
@@ -90,12 +67,8 @@ export class Vec {
         return this;
     }
 
-    /**
-     * Apply an affine transformation without translation.
-     * @param {AffineMatrix} affineMatrix
-     * @returns {Vec} this
-     */
-    affineTransformWithoutTranslation(affineMatrix) {
+    /** Apply an affine transformation without translation. */
+    affineTransformWithoutTranslation(affineMatrix: AffineMatrix): Vec {
         const { x, y } = this;
         const { a, b, c, d } = affineMatrix;
         this.x = a * x + c * y;
@@ -103,12 +76,8 @@ export class Vec {
         return this;
     }
 
-    /**
-     * Apply a transform object.
-     * @param {import('./Matrix.js').TransformArgs} transform
-     * @returns {Vec} this
-     */
-    transform(transform) {
+    /** Apply a transform object. */
+    transform(transform: TransformArgs): Vec {
         return this.affineTransform(AffineMatrix.fromTransform(transform));
     }
 
@@ -116,99 +85,64 @@ export class Vec {
     // Arithmetic Operations (mutating)
     // =========================================================================
 
-    /**
-     * Add another vector.
-     * @param {Vec} v
-     * @returns {Vec} this
-     */
-    add(v) {
+    /** Add another vector. */
+    add(v: Vec): Vec {
         this.x += v.x;
         this.y += v.y;
         return this;
     }
 
-    /**
-     * Add a scalar to both components.
-     * @param {number} x
-     * @returns {Vec} this
-     */
-    addScalar(x) {
+    /** Add a scalar to both components. */
+    addScalar(x: number): Vec {
         this.x += x;
         this.y += x;
         return this;
     }
 
-    /**
-     * Subtract another vector.
-     * @param {Vec} v
-     * @returns {Vec} this
-     */
-    sub(v) {
+    /** Subtract another vector. */
+    sub(v: Vec): Vec {
         this.x -= v.x;
         this.y -= v.y;
         return this;
     }
 
-    /**
-     * Subtract a scalar from both components.
-     * @param {number} x
-     * @returns {Vec} this
-     */
-    subScalar(x) {
+    /** Subtract a scalar from both components. */
+    subScalar(x: number): Vec {
         this.x -= x;
         this.y -= x;
         return this;
     }
 
-    /**
-     * Multiply component-wise by another vector.
-     * @param {Vec} v
-     * @returns {Vec} this
-     */
-    mul(v) {
+    /** Multiply component-wise by another vector. */
+    mul(v: Vec): Vec {
         this.x *= v.x;
         this.y *= v.y;
         return this;
     }
 
-    /**
-     * Multiply both components by a scalar.
-     * @param {number} x
-     * @returns {Vec} this
-     */
-    mulScalar(x) {
+    /** Multiply both components by a scalar. */
+    mulScalar(x: number): Vec {
         this.x *= x;
         this.y *= x;
         return this;
     }
 
-    /**
-     * Divide component-wise by another vector.
-     * @param {Vec} v
-     * @returns {Vec} this
-     */
-    div(v) {
+    /** Divide component-wise by another vector. */
+    div(v: Vec): Vec {
         this.x /= v.x;
         this.y /= v.y;
         return this;
     }
 
-    /**
-     * Divide both components by a scalar.
-     * @param {number} x
-     * @returns {Vec} this
-     */
-    divScalar(x) {
+    /** Divide both components by a scalar. */
+    divScalar(x: number): Vec {
         this.x /= x;
         this.y /= x;
         return this;
     }
 
-    /**
-     * Negate both components.
-     * @returns {Vec} this
-     */
-    negate() {
+    /** Negate both components. */
+    negate(): Vec {
         this.x *= -1;
         this.y *= -1;
         return this;
@@ -218,32 +152,18 @@ export class Vec {
     // Comparison
     // =========================================================================
 
-    /**
-     * Check exact equality.
-     * @param {Vec} v
-     * @returns {boolean}
-     */
-    equals(v) {
+    /** Check exact equality. */
+    equals(v: Vec): boolean {
         return this.x === v.x && this.y === v.y;
     }
 
-    /**
-     * Check equality within absolute tolerance.
-     * @param {Vec} v
-     * @param {number} [tolerance=DEFAULT_TOLERANCE]
-     * @returns {boolean}
-     */
-    equalsWithinTolerance(v, tolerance = DEFAULT_TOLERANCE) {
+    /** Check equality within absolute tolerance. */
+    equalsWithinTolerance(v: Vec, tolerance: number = DEFAULT_TOLERANCE): boolean {
         return Math.abs(this.x - v.x) <= tolerance && Math.abs(this.y - v.y) <= tolerance;
     }
 
-    /**
-     * Check equality within relative epsilon.
-     * @param {Vec} v
-     * @param {number} [epsilon=DEFAULT_EPSILON]
-     * @returns {boolean}
-     */
-    equalsWithinRelativeEpsilon(v, epsilon = DEFAULT_EPSILON) {
+    /** Check equality within relative epsilon. */
+    equalsWithinRelativeEpsilon(v: Vec, epsilon: number = DEFAULT_EPSILON): boolean {
         return (
             equalWithinRelativeEpsilon(this.x, v.x, epsilon) &&
             equalWithinRelativeEpsilon(this.y, v.y, epsilon)
@@ -254,42 +174,29 @@ export class Vec {
     // Rounding
     // =========================================================================
 
-    /**
-     * Floor both components.
-     * @returns {Vec} this
-     */
-    floor() {
+    /** Floor both components. */
+    floor(): Vec {
         this.x = Math.floor(this.x);
         this.y = Math.floor(this.y);
         return this;
     }
 
-    /**
-     * Ceil both components.
-     * @returns {Vec} this
-     */
-    ceil() {
+    /** Ceil both components. */
+    ceil(): Vec {
         this.x = Math.ceil(this.x);
         this.y = Math.ceil(this.y);
         return this;
     }
 
-    /**
-     * Round both components.
-     * @returns {Vec} this
-     */
-    round() {
+    /** Round both components. */
+    round(): Vec {
         this.x = Math.round(this.x);
         this.y = Math.round(this.y);
         return this;
     }
 
-    /**
-     * Round to fixed number of decimal places.
-     * @param {number} fractionDigits
-     * @returns {Vec} this
-     */
-    roundToFixed(fractionDigits) {
+    /** Round to fixed number of decimal places. */
+    roundToFixed(fractionDigits: number): Vec {
         const scale = Math.pow(10, fractionDigits);
         const oneOverScale = 1 / scale;
         this.x = Math.round(this.x * scale) * oneOverScale;
@@ -301,35 +208,22 @@ export class Vec {
     // Component-wise Operations
     // =========================================================================
 
-    /**
-     * Set each component to the minimum of this and v.
-     * @param {Vec} v
-     * @returns {Vec} this
-     */
-    min(v) {
+    /** Set each component to the minimum of this and v. */
+    min(v: Vec): Vec {
         this.x = Math.min(this.x, v.x);
         this.y = Math.min(this.y, v.y);
         return this;
     }
 
-    /**
-     * Set each component to the maximum of this and v.
-     * @param {Vec} v
-     * @returns {Vec} this
-     */
-    max(v) {
+    /** Set each component to the maximum of this and v. */
+    max(v: Vec): Vec {
         this.x = Math.max(this.x, v.x);
         this.y = Math.max(this.y, v.y);
         return this;
     }
 
-    /**
-     * Linear interpolation toward another vector.
-     * @param {Vec} v - Target vector
-     * @param {number} t - Interpolation factor (0 = this, 1 = v)
-     * @returns {Vec} this
-     */
-    mix(v, t) {
+    /** Linear interpolation toward another vector. (t: 0 = this, 1 = v) */
+    mix(v: Vec, t: number): Vec {
         this.x += (v.x - this.x) * t;
         this.y += (v.y - this.y) * t;
         return this;
@@ -339,21 +233,13 @@ export class Vec {
     // Vector Products
     // =========================================================================
 
-    /**
-     * Dot product with another vector.
-     * @param {Vec} v
-     * @returns {number}
-     */
-    dot(v) {
+    /** Dot product with another vector. */
+    dot(v: Vec): number {
         return this.x * v.x + this.y * v.y;
     }
 
-    /**
-     * 2D cross product (returns scalar).
-     * @param {Vec} v
-     * @returns {number}
-     */
-    cross(v) {
+    /** 2D cross product (returns scalar). */
+    cross(v: Vec): number {
         return this.x * v.y - this.y * v.x;
     }
 
@@ -361,11 +247,8 @@ export class Vec {
     // Normalization
     // =========================================================================
 
-    /**
-     * Normalize to unit length.
-     * @returns {Vec} this
-     */
-    normalize() {
+    /** Normalize to unit length. */
+    normalize(): Vec {
         const lengthSq = this.lengthSquared();
         if (lengthSq > 0) {
             this.mulScalar(1 / Math.sqrt(lengthSq));
@@ -377,21 +260,13 @@ export class Vec {
     // Rotation
     // =========================================================================
 
-    /**
-     * Rotate by angle in degrees.
-     * @param {number} degrees
-     * @returns {Vec} this
-     */
-    rotate(degrees) {
+    /** Rotate by angle in degrees. */
+    rotate(degrees: number): Vec {
         return this.rotateRadians(degrees * RADIANS_PER_DEGREE);
     }
 
-    /**
-     * Rotate by angle in radians.
-     * @param {number} radians
-     * @returns {Vec} this
-     */
-    rotateRadians(radians) {
+    /** Rotate by angle in radians. */
+    rotateRadians(radians: number): Vec {
         const ct = Math.cos(radians);
         const st = Math.sin(radians);
         const { x, y } = this;
@@ -400,22 +275,16 @@ export class Vec {
         return this;
     }
 
-    /**
-     * Rotate 90 degrees counter-clockwise.
-     * @returns {Vec} this
-     */
-    rotate90() {
+    /** Rotate 90 degrees counter-clockwise. */
+    rotate90(): Vec {
         const { x, y } = this;
         this.x = -y;
         this.y = x;
         return this;
     }
 
-    /**
-     * Rotate 90 degrees clockwise.
-     * @returns {Vec} this
-     */
-    rotateNeg90() {
+    /** Rotate 90 degrees clockwise. */
+    rotateNeg90(): Vec {
         const { x, y } = this;
         this.x = y;
         this.y = -x;
@@ -426,19 +295,13 @@ export class Vec {
     // Angle
     // =========================================================================
 
-    /**
-     * Get angle from positive x-axis in degrees.
-     * @returns {number} Angle in degrees (-180 to 180)
-     */
-    angle() {
+    /** Get angle from positive x-axis in degrees (-180 to 180). */
+    angle(): number {
         return this.angleRadians() * DEGREES_PER_RADIAN;
     }
 
-    /**
-     * Get angle from positive x-axis in radians.
-     * @returns {number} Angle in radians (-PI to PI)
-     */
-    angleRadians() {
+    /** Get angle from positive x-axis in radians (-PI to PI). */
+    angleRadians(): number {
         return Math.atan2(this.y, this.x);
     }
 
@@ -446,41 +309,27 @@ export class Vec {
     // Length / Distance
     // =========================================================================
 
-    /**
-     * Get the length (magnitude) of this vector.
-     * @returns {number}
-     */
-    length() {
+    /** Get the length (magnitude) of this vector. */
+    length(): number {
         const { x, y } = this;
         return Math.sqrt(x * x + y * y);
     }
 
-    /**
-     * Get the squared length (avoids sqrt).
-     * @returns {number}
-     */
-    lengthSquared() {
+    /** Get the squared length (avoids sqrt). */
+    lengthSquared(): number {
         const { x, y } = this;
         return x * x + y * y;
     }
 
-    /**
-     * Get distance to another point.
-     * @param {Vec} v
-     * @returns {number}
-     */
-    distance(v) {
+    /** Get distance to another point. */
+    distance(v: Vec): number {
         const dx = v.x - this.x;
         const dy = v.y - this.y;
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    /**
-     * Get squared distance to another point (avoids sqrt).
-     * @param {Vec} v
-     * @returns {number}
-     */
-    distanceSquared(v) {
+    /** Get squared distance to another point (avoids sqrt). */
+    distanceSquared(v: Vec): number {
         const dx = v.x - this.x;
         const dy = v.y - this.y;
         return dx * dx + dy * dy;
@@ -490,13 +339,8 @@ export class Vec {
     // Line Segment Operations
     // =========================================================================
 
-    /**
-     * Get parametric t value at closest point on line segment.
-     * @param {Vec} a - Segment start
-     * @param {Vec} b - Segment end
-     * @returns {number} t value (may be outside 0-1)
-     */
-    timeAtClosestPointOnLineSegment(a, b) {
+    /** Get parametric t value at closest point on line segment (a=start, b=end; may be outside 0-1). */
+    timeAtClosestPointOnLineSegment(a: Vec, b: Vec): number {
         const pax = this.x - a.x;
         const pay = this.y - a.y;
         const bax = b.x - a.x;
@@ -504,13 +348,8 @@ export class Vec {
         return (pax * bax + pay * bay) / (bax * bax + bay * bay);
     }
 
-    /**
-     * Get distance to line segment.
-     * @param {Vec} a - Segment start
-     * @param {Vec} b - Segment end
-     * @returns {number}
-     */
-    distanceToLineSegment(a, b) {
+    /** Get distance to line segment. */
+    distanceToLineSegment(a: Vec, b: Vec): number {
         const pax = this.x - a.x;
         const pay = this.y - a.y;
         const bax = b.x - a.x;
@@ -521,13 +360,8 @@ export class Vec {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
-    /**
-     * Project this point onto a line segment (clamped to segment).
-     * @param {Vec} a - Segment start
-     * @param {Vec} b - Segment end
-     * @returns {Vec} this
-     */
-    projectToLineSegment(a, b) {
+    /** Project this point onto a line segment (clamped to segment). */
+    projectToLineSegment(a: Vec, b: Vec): Vec {
         const pax = this.x - a.x;
         const pay = this.y - a.y;
         const bax = b.x - a.x;
@@ -538,13 +372,8 @@ export class Vec {
         return this;
     }
 
-    /**
-     * Project this point onto an infinite line.
-     * @param {Vec} a - Point on line
-     * @param {Vec} b - Another point on line
-     * @returns {Vec} this
-     */
-    projectToLine(a, b) {
+    /** Project this point onto an infinite line. */
+    projectToLine(a: Vec, b: Vec): Vec {
         const pax = this.x - a.x;
         const pay = this.y - a.y;
         const bax = b.x - a.x;
@@ -559,19 +388,13 @@ export class Vec {
     // State Checks
     // =========================================================================
 
-    /**
-     * Check if both components are zero.
-     * @returns {boolean}
-     */
-    isZero() {
+    /** Check if both components are zero. */
+    isZero(): boolean {
         return this.x === 0 && this.y === 0;
     }
 
-    /**
-     * Check if both components are finite.
-     * @returns {boolean}
-     */
-    isFinite() {
+    /** Check if both components are finite. */
+    isFinite(): boolean {
         return Number.isFinite(this.x) && Number.isFinite(this.y);
     }
 
@@ -579,13 +402,8 @@ export class Vec {
     // Code Generation
     // =========================================================================
 
-    /**
-     * Generate expression code.
-     * @param {number} [minimumFractionDigits]
-     * @param {number} [maximumFractionDigits]
-     * @returns {string}
-     */
-    toExpressionCode(minimumFractionDigits, maximumFractionDigits) {
+    /** Generate expression code. */
+    toExpressionCode(minimumFractionDigits?: number, maximumFractionDigits?: number): string {
         return `Vec(${expressionCodeForNumber(
             this.x,
             minimumFractionDigits,
@@ -597,140 +415,73 @@ export class Vec {
     // Static Methods (non-mutating)
     // =========================================================================
 
-    /**
-     * Add two vectors, returning a new Vec.
-     * @param {Vec} a
-     * @param {Vec} b
-     * @returns {Vec}
-     */
-    static add(a, b) {
+    /** Add two vectors, returning a new Vec. */
+    static add(a: Vec, b: Vec): Vec {
         return a.clone().add(b);
     }
 
-    /**
-     * Subtract two vectors, returning a new Vec.
-     * @param {Vec} a
-     * @param {Vec} b
-     * @returns {Vec}
-     */
-    static sub(a, b) {
+    /** Subtract two vectors, returning a new Vec. */
+    static sub(a: Vec, b: Vec): Vec {
         return a.clone().sub(b);
     }
 
-    /**
-     * Multiply two vectors component-wise, returning a new Vec.
-     * @param {Vec} a
-     * @param {Vec} b
-     * @returns {Vec}
-     */
-    static mul(a, b) {
+    /** Multiply two vectors component-wise, returning a new Vec. */
+    static mul(a: Vec, b: Vec): Vec {
         return a.clone().mul(b);
     }
 
-    /**
-     * Divide two vectors component-wise, returning a new Vec.
-     * @param {Vec} a
-     * @param {Vec} b
-     * @returns {Vec}
-     */
-    static div(a, b) {
+    /** Divide two vectors component-wise, returning a new Vec. */
+    static div(a: Vec, b: Vec): Vec {
         return a.clone().div(b);
     }
 
-    /**
-     * Component-wise minimum, returning a new Vec.
-     * @param {Vec} a
-     * @param {Vec} b
-     * @returns {Vec}
-     */
-    static min(a, b) {
+    /** Component-wise minimum, returning a new Vec. */
+    static min(a: Vec, b: Vec): Vec {
         return a.clone().min(b);
     }
 
-    /**
-     * Component-wise maximum, returning a new Vec.
-     * @param {Vec} a
-     * @param {Vec} b
-     * @returns {Vec}
-     */
-    static max(a, b) {
+    /** Component-wise maximum, returning a new Vec. */
+    static max(a: Vec, b: Vec): Vec {
         return a.clone().max(b);
     }
 
-    /**
-     * Linear interpolation between two vectors, returning a new Vec.
-     * @param {Vec} a
-     * @param {Vec} b
-     * @param {number} t
-     * @returns {Vec}
-     */
-    static mix(a, b, t) {
+    /** Linear interpolation between two vectors, returning a new Vec. */
+    static mix(a: Vec, b: Vec, t: number): Vec {
         return a.clone().mix(b, t);
     }
 
-    /**
-     * Dot product of two vectors.
-     * @param {Vec} a
-     * @param {Vec} b
-     * @returns {number}
-     */
-    static dot(a, b) {
+    /** Dot product of two vectors. */
+    static dot(a: Vec, b: Vec): number {
         return a.dot(b);
     }
 
-    /**
-     * Rotate vector by degrees, returning a new Vec.
-     * @param {Vec} v
-     * @param {number} degrees
-     * @returns {Vec}
-     */
-    static rotate(v, degrees) {
+    /** Rotate vector by degrees, returning a new Vec. */
+    static rotate(v: Vec, degrees: number): Vec {
         return v.clone().rotate(degrees);
     }
 
-    /**
-     * Rotate vector by radians, returning a new Vec.
-     * @param {Vec} v
-     * @param {number} radians
-     * @returns {Vec}
-     */
-    static rotateRadians(v, radians) {
+    /** Rotate vector by radians, returning a new Vec. */
+    static rotateRadians(v: Vec, radians: number): Vec {
         return v.clone().rotateRadians(radians);
     }
 
-    /**
-     * Rotate vector 90 degrees counter-clockwise, returning a new Vec.
-     * @param {Vec} v
-     * @returns {Vec}
-     */
-    static rotate90(v) {
+    /** Rotate vector 90 degrees counter-clockwise, returning a new Vec. */
+    static rotate90(v: Vec): Vec {
         return new Vec(-v.y, v.x);
     }
 
-    /**
-     * Create unit vector from angle in degrees.
-     * @param {number} angle - Angle in degrees
-     * @returns {Vec}
-     */
-    static fromAngle(angle) {
+    /** Create unit vector from angle in degrees. */
+    static fromAngle(angle: number): Vec {
         return Vec.fromAngleRadians(angle * RADIANS_PER_DEGREE);
     }
 
-    /**
-     * Create unit vector from angle in radians.
-     * @param {number} angle - Angle in radians
-     * @returns {Vec}
-     */
-    static fromAngleRadians(angle) {
+    /** Create unit vector from angle in radians. */
+    static fromAngleRadians(angle: number): Vec {
         return new Vec(Math.cos(angle), Math.sin(angle));
     }
 
-    /**
-     * Validate that value is a valid Vec.
-     * @param {*} v
-     * @returns {boolean}
-     */
-    static isValid(v) {
+    /** Validate that value is a valid Vec. */
+    static isValid(v: unknown): v is Vec {
         return (
             v instanceof Vec &&
             typeof v.x === 'number' &&
@@ -740,6 +491,3 @@ export class Vec {
         );
     }
 }
-
-// Register Vec with Matrix.js to resolve circular dependency
-setVec(Vec);
