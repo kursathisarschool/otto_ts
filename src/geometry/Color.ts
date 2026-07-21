@@ -13,59 +13,34 @@ import { expressionCodeForNumber } from './math.js';
  * @example
  * const red = new Color(1, 0, 0);
  * red.toCSSString(); // "#ff0000"
- *
- * @example
- * const semiTransparentBlue = new Color(0, 0, 1, 0.5);
- * semiTransparentBlue.toCSSString(); // "rgba(0, 0, 255, 0.5)"
- *
- * @example
- * const color = Color.fromCSSString('#ff6600');
- * const [h, s, v, a] = color.toHSVA();
  */
 export class Color {
     static displayName = 'Color';
 
-    /**
-     * Create a color.
-     * @param {number} [r=0] - Red component (0-1)
-     * @param {number} [g=0] - Green component (0-1)
-     * @param {number} [b=0] - Blue component (0-1)
-     * @param {number} [a=1] - Alpha component (0-1)
-     */
-    constructor(r = 0, g = 0, b = 0, a = 1) {
-        /** @type {number} */
+    r: number;
+    g: number;
+    b: number;
+    a: number;
+
+    constructor(r: number = 0, g: number = 0, b: number = 0, a: number = 1) {
         this.r = r;
-        /** @type {number} */
         this.g = g;
-        /** @type {number} */
         this.b = b;
-        /** @type {number} */
         this.a = a;
     }
 
-    /**
-     * Create a copy of this color.
-     * @returns {Color}
-     */
-    clone() {
+    /** Create a copy of this color. */
+    clone(): Color {
         return new Color(this.r, this.g, this.b, this.a);
     }
 
-    /**
-     * Check exact equality.
-     * @param {Color} color
-     * @returns {boolean}
-     */
-    equals(color) {
+    /** Check exact equality. */
+    equals(color: Color): boolean {
         return this.r === color.r && this.g === color.g && this.b === color.b && this.a === color.a;
     }
 
-    /**
-     * Convert to CSS string.
-     * Returns hex (#rrggbb) for opaque colors, rgba() for transparent.
-     * @returns {string}
-     */
-    toCSSString() {
+    /** Convert to CSS string. Returns hex (#rrggbb) for opaque colors, rgba() for transparent. */
+    toCSSString(): string {
         const r = Math.round(this.r * 255);
         const g = Math.round(this.g * 255);
         const b = Math.round(this.b * 255);
@@ -78,28 +53,20 @@ export class Color {
         }
     }
 
-    /**
-     * Convert to expression code string.
-     * @param {number} [minFractionDigits=0]
-     * @param {number} [maxFractionDigits=3]
-     * @returns {string}
-     */
-    toExpressionCode(minFractionDigits = 0, maxFractionDigits = 3) {
+    /** Convert to expression code string. */
+    toExpressionCode(minFractionDigits: number = 0, maxFractionDigits: number = 3): string {
         const { r, g, b, a } = this;
-        const expr = (x) => expressionCodeForNumber(x, minFractionDigits, maxFractionDigits);
+        const expr = (x: number) => expressionCodeForNumber(x, minFractionDigits, maxFractionDigits);
         return `Color(${expr(r)}, ${expr(g)}, ${expr(b)}, ${expr(a)})`;
     }
 
-    /**
-     * Convert to HSVA array.
-     * @returns {[number, number, number, number]} [h, s, v, a] all in range 0-1
-     */
-    toHSVA() {
-        let h, s;
+    /** Convert to HSVA array. Returns [h, s, v, a] all in range 0-1. */
+    toHSVA(): [number, number, number, number] {
+        let h: number, s: number;
         const { r, g, b, a } = this;
         const v = Math.max(r, g, b);
         const diff = v - Math.min(r, g, b);
-        const diffc = (c) => {
+        const diffc = (c: number): number => {
             return (v - c) / 6 / diff + 1 / 2;
         };
         if (diff === 0) {
@@ -126,12 +93,8 @@ export class Color {
         return [h, s, v, a];
     }
 
-    /**
-     * Validate that value is a valid Color.
-     * @param {*} color
-     * @returns {boolean}
-     */
-    static isValid(color) {
+    /** Validate that value is a valid Color. */
+    static isValid(color: unknown): color is Color {
         return (
             color instanceof Color &&
             typeof color.r === 'number' &&
@@ -141,15 +104,8 @@ export class Color {
         );
     }
 
-    /**
-     * Create color from HSVA values.
-     * @param {number} h - Hue (0-1)
-     * @param {number} s - Saturation (0-1)
-     * @param {number} v - Value (0-1)
-     * @param {number} a - Alpha (0-1)
-     * @returns {Color}
-     */
-    static fromHSVA(h, s, v, a) {
+    /** Create color from HSVA values. */
+    static fromHSVA(h: number, s: number, v: number, a: number): Color {
         h = h * 6;
         const hi = Math.floor(h) % 6;
 
@@ -177,10 +133,8 @@ export class Color {
     /**
      * Parse a CSS color string.
      * Supports: keywords, hex (#rgb, #rgba, #rrggbb, #rrggbbaa), rgb(), rgba()
-     * @param {string} cssString
-     * @returns {Color}
      */
-    static fromCSSString(cssString) {
+    static fromCSSString(cssString: string): Color {
         cssString = cssString.trim().toLowerCase();
 
         // keyword
@@ -253,16 +207,16 @@ export class Color {
 // Helper functions
 // =============================================================================
 
-const fromHex1 = (s) => parseInt('' + s + s, 16) / 255;
-const fromHex2 = (s) => parseInt(s, 16) / 255;
-const from255String = (s) => {
+const fromHex1 = (s: string): number => parseInt('' + s + s, 16) / 255;
+const fromHex2 = (s: string): number => parseInt(s, 16) / 255;
+const from255String = (s: string): number => {
     const percent = s.match(/^(\d+)%$/);
     if (percent) {
         return parseInt(percent[1], 10) / 100;
     }
     return parseInt(s, 10) / 255;
 };
-const fromAlphaString = (s) => {
+const fromAlphaString = (s: string): number => {
     const percent = s.match(/^(\d+\.?\d*)%$/);
     if (percent) {
         return parseFloat(percent[1]) / 100;
@@ -274,11 +228,8 @@ const fromAlphaString = (s) => {
 // CSS Color Keywords
 // =============================================================================
 
-/**
- * CSS color keywords mapping to [r, g, b, a] (r/g/b in 0-255, a in 0-1)
- * @type {Object.<string, [number, number, number, number]>}
- */
-const cssColorKeywords = {
+/** CSS color keywords mapping to [r, g, b, a] (r/g/b in 0-255, a in 0-1) */
+const cssColorKeywords: Record<string, [number, number, number, number]> = {
     aliceblue: [240, 248, 255, 1],
     antiquewhite: [250, 235, 215, 1],
     aqua: [0, 255, 255, 1],

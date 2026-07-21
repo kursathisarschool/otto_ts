@@ -27,121 +27,67 @@ const tempHandleOut = new Vec();
  *     new Vec(-20, 0),        // handleIn (relative)
  *     new Vec(20, 0)          // handleOut (relative)
  * );
- *
- * @extends Geometry
  */
 export class Anchor extends Geometry {
-    /**
-     * Create an anchor point.
-     * @param {Vec} [position] - Position of the anchor
-     * @param {Vec} [handleIn] - Incoming bezier handle (relative to position)
-     * @param {Vec} [handleOut] - Outgoing bezier handle (relative to position)
-     */
     constructor(position = new Vec(), handleIn = new Vec(), handleOut = new Vec()) {
         super();
-        /** @type {Vec} */
         this.position = position;
-        /** @type {Vec} - Incoming handle, relative to position */
         this.handleIn = handleIn;
-        /** @type {Vec} - Outgoing handle, relative to position */
         this.handleOut = handleOut;
     }
-    /**
-     * Create a copy of this anchor.
-     * @returns {Anchor}
-     */
+    /** Create a copy of this anchor. */
     clone() {
         return new Anchor(this.position.clone(), this.handleIn.clone(), this.handleOut.clone());
     }
-    /**
-     * Check if this anchor is valid.
-     * @returns {boolean}
-     */
+    /** Check if this anchor is valid. */
     isValid() {
         return Vec.isValid(this.position) && Vec.isValid(this.handleIn) && Vec.isValid(this.handleOut);
     }
-    /**
-     * Apply an affine transformation.
-     * @param {import('./Matrix.js').AffineMatrix} affineMatrix
-     * @returns {Anchor} this
-     */
+    /** Apply an affine transformation. */
     affineTransform(affineMatrix) {
         this.position.affineTransform(affineMatrix);
         this.handleIn.affineTransformWithoutTranslation(affineMatrix);
         this.handleOut.affineTransformWithoutTranslation(affineMatrix);
         return this;
     }
-    /**
-     * Apply an affine transformation without translation.
-     * @param {import('./Matrix.js').AffineMatrix} affineMatrix
-     * @returns {Anchor} this
-     */
+    /** Apply an affine transformation without translation. */
     affineTransformWithoutTranslation(affineMatrix) {
         this.position.affineTransformWithoutTranslation(affineMatrix);
         this.handleIn.affineTransformWithoutTranslation(affineMatrix);
         this.handleOut.affineTransformWithoutTranslation(affineMatrix);
         return this;
     }
-    /**
-     * Get all anchors (returns self in array).
-     * @returns {Anchor[]}
-     */
+    /** Get all anchors (returns self in array). */
     allAnchors() {
         return [this];
     }
-    /**
-     * Get all orphaned anchors (returns self in array).
-     * @returns {Anchor[]}
-     */
+    /** Get all orphaned anchors (returns self in array). */
     allOrphanedAnchors() {
         return [this];
     }
-    /**
-     * Get loose bounding box (just the position point).
-     * @returns {BoundingBox}
-     */
+    /** Get loose bounding box (just the position point). */
     looseBoundingBox() {
         return new BoundingBox(this.position.clone(), this.position.clone());
     }
-    /**
-     * Get tight bounding box (just the position point).
-     * @returns {BoundingBox}
-     */
+    /** Get tight bounding box (just the position point). */
     tightBoundingBox() {
         return new BoundingBox(this.position.clone(), this.position.clone());
     }
-    /**
-     * Check if contained by a bounding box.
-     * @param {BoundingBox} box
-     * @returns {boolean}
-     */
+    /** Check if contained by a bounding box. */
     isContainedByBoundingBox(box) {
         return box.containsPoint(this.position);
     }
-    /**
-     * Check if intersected by a bounding box edge.
-     * @param {BoundingBox} box
-     * @returns {boolean}
-     */
+    /** Check if intersected by a bounding box edge. */
     isIntersectedByBoundingBox({ min, max }) {
         const { x, y } = this.position;
         return ((x >= min.x && x <= max.x && (y === min.y || y === max.y)) ||
             (y >= min.y && y <= max.y && (x === min.x || x === max.x)));
     }
-    /**
-     * Check if overlapped by a bounding box.
-     * @param {BoundingBox} box
-     * @returns {boolean}
-     */
+    /** Check if overlapped by a bounding box. */
     isOverlappedByBoundingBox(box) {
         return box.containsPoint(this.position);
     }
-    /**
-     * Find closest point within distance.
-     * @param {number} maxDistance
-     * @param {Vec} point
-     * @returns {import('./Geometry.js').ClosestPointResult}
-     */
+    /** Find closest point within distance. */
     closestPointWithinDistanceToPoint(maxDistance, point) {
         const { position } = this;
         const distanceSq = position.distanceSquared(point);
@@ -153,38 +99,24 @@ export class Anchor extends Geometry {
         }
         return { distance: Infinity };
     }
-    /**
-     * Reverse the anchor (swap handles).
-     * @returns {Anchor} this
-     */
+    /** Reverse the anchor (swap handles). */
     reverse() {
         const { handleIn, handleOut } = this;
         this.handleIn = handleOut;
         this.handleOut = handleIn;
         return this;
     }
-    /**
-     * Check if handles are tangent (smooth curve).
-     * @param {number} [tolerance=DEFAULT_TOLERANCE]
-     * @returns {boolean}
-     */
+    /** Check if handles are tangent (smooth curve). */
     hasTangentHandles(tolerance = DEFAULT_TOLERANCE) {
         tempHandleIn.copy(this.handleIn).normalize();
         tempHandleOut.copy(this.handleOut).normalize();
         return tempHandleIn.dot(tempHandleOut) <= tolerance - 1;
     }
-    /**
-     * Check if both handles are zero (corner point).
-     * @returns {boolean}
-     */
+    /** Check if both handles are zero (corner point). */
     hasZeroHandles() {
         return this.handleIn.isZero() && this.handleOut.isZero();
     }
-    /**
-     * Validate that value is a valid Anchor.
-     * @param {*} a
-     * @returns {boolean}
-     */
+    /** Validate that value is a valid Anchor. */
     static isValid(a) {
         return a instanceof Anchor && a.isValid();
     }

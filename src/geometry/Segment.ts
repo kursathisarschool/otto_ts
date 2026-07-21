@@ -7,71 +7,51 @@
 
 import { BoundingBox } from './BoundingBox.js';
 import {
-    bernsteinBezierFormForClosestPointOnCubic,
     cubicByTrimmingCubic,
     cubicsBySplittingCubicAtTime,
-    findRoots,
     pointOnCubicAtTime,
     positionAndTimeAtClosestPointOnCubic,
+    type Cubic,
 } from './bezier.js';
 import { DEFAULT_TOLERANCE } from './constants.js';
 import { saturate } from './math.js';
 import { pairs } from './util.js';
 import { Vec } from './Vec.js';
+import type { Anchor } from './Anchor.js';
 
 // =============================================================================
 // Type Definitions
 // =============================================================================
 
-/**
- * @typedef {[import('./Anchor.js').Anchor, import('./Anchor.js').Anchor]} Segment
- * A segment is defined by two anchors.
- */
+/** A segment is defined by two anchors. */
+export type Segment = [Anchor, Anchor];
 
-/**
- * @typedef {[Vec, Vec]} Line
- * A line segment defined by two points.
- */
+/** A line segment defined by two points. */
+export type Line = [Vec, Vec];
 
-/**
- * @typedef {[Vec, Vec, Vec, Vec]} Cubic
- * A cubic bezier curve defined by four control points.
- */
-
-/**
- * @typedef {Object} PrimitiveIntersectionResult
- * @property {number} time1 - Parameter on first primitive
- * @property {number} time2 - Parameter on second primitive
- */
+export interface PrimitiveIntersectionResult {
+    /** Parameter on first primitive */
+    time1: number;
+    /** Parameter on second primitive */
+    time2: number;
+}
 
 // =============================================================================
 // Segment Functions
 // =============================================================================
 
-/**
- * Check if a segment is linear (no bezier handles).
- * @param {Segment} segment
- * @returns {boolean}
- */
-export const isSegmentLinear = ([anchor1, anchor2]) => {
+/** Check if a segment is linear (no bezier handles). */
+export const isSegmentLinear = ([anchor1, anchor2]: Segment): boolean => {
     return anchor1.handleOut.isZero() && anchor2.handleIn.isZero();
 };
 
-/**
- * Get the length of a linear segment.
- * @param {Segment} segment
- * @returns {number}
- */
-export const linearSegmentLength = (segment) => {
+/** Get the length of a linear segment. */
+export const linearSegmentLength = (segment: Segment): number => {
     return segment[0].position.distance(segment[1].position);
 };
 
-/**
- * Get the length of a segment (linear or curved).
- * @param {Segment} segment
- * @returns {number}
- */
-export const segmentLength = (segment) => {
+/** Get the length of a segment (linear or curved). */
+export const segmentLength = (segment: Segment): number => {
     if (isSegmentLinear(segment)) {
         return linearSegmentLength(segment);
     }
@@ -79,13 +59,8 @@ export const segmentLength = (segment) => {
     return approximateCubicLength(cubicFromSegment(segment));
 };
 
-/**
- * Get partial length of a segment up to endTime.
- * @param {Segment} segment
- * @param {number} endTime
- * @returns {number}
- */
-export const partialSegmentLength = (segment, endTime) => {
+/** Get partial length of a segment up to endTime. */
+export const partialSegmentLength = (segment: Segment, endTime: number): number => {
     if (isSegmentLinear(segment)) {
         return endTime * segment[0].position.distance(segment[1].position);
     }
@@ -98,22 +73,16 @@ export const partialSegmentLength = (segment, endTime) => {
 // Line Functions
 // =============================================================================
 
-/**
- * Create a line from a segment.
- * @param {Segment} segment
- * @returns {Line}
- */
-export const lineFromSegment = ([a1, a2]) => {
+/** Create a line from a segment. */
+export const lineFromSegment = ([a1, a2]: Segment): Line => {
     return [a1.position, a2.position];
 };
 
-/**
- * Find closest point on a line segment.
- * @param {Vec} point - Point to find closest position to
- * @param {Line} line - Line segment [p1, p2]
- * @returns {{position: Vec, time: number}}
- */
-export const positionAndTimeAtClosestPointOnLine = (point, [p1, p2]) => {
+/** Find closest point on a line segment. */
+export const positionAndTimeAtClosestPointOnLine = (
+    point: Vec,
+    [p1, p2]: Line
+): { position: Vec; time: number } => {
     const lineDir = p2.clone().sub(p1);
     const pointDir = point.clone().sub(p1);
     const time = saturate(pointDir.dot(lineDir) / lineDir.lengthSquared());
@@ -125,12 +94,8 @@ export const positionAndTimeAtClosestPointOnLine = (point, [p1, p2]) => {
 // Cubic Functions
 // =============================================================================
 
-/**
- * Create a cubic bezier from a segment.
- * @param {Segment} segment
- * @returns {Cubic}
- */
-export const cubicFromSegment = ([anchor1, anchor2]) => {
+/** Create a cubic bezier from a segment. */
+export const cubicFromSegment = ([anchor1, anchor2]: Segment): Cubic => {
     return [
         anchor1.position,
         anchor1.position.clone().add(anchor1.handleOut),
@@ -139,13 +104,8 @@ export const cubicFromSegment = ([anchor1, anchor2]) => {
     ];
 };
 
-/**
- * Approximate the length of a cubic bezier using subdivision.
- * @param {Cubic} cubic
- * @param {number} [subdivisions=16]
- * @returns {number}
- */
-const approximateCubicLength = (cubic, subdivisions = 16) => {
+/** Approximate the length of a cubic bezier using subdivision. */
+const approximateCubicLength = (cubic: Cubic, subdivisions: number = 16): number => {
     let length = 0;
     const point = new Vec();
     let prevPoint = cubic[0].clone();
@@ -164,13 +124,8 @@ const approximateCubicLength = (cubic, subdivisions = 16) => {
 // Line-Line Intersection
 // =============================================================================
 
-/**
- * Find intersections between two line segments.
- * @param {Line} line1
- * @param {Line} line2
- * @returns {PrimitiveIntersectionResult[]}
- */
-export const lineLineIntersections = ([p1, p2], [p3, p4]) => {
+/** Find intersections between two line segments. */
+export const lineLineIntersections = ([p1, p2]: Line, [p3, p4]: Line): PrimitiveIntersectionResult[] => {
     // http://www-cs.ccny.cuny.edu/~wolberg/capstone/intersection/Intersection%20point%20of%20two%20lines.html
     const denom = (p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y);
     // If denom === 0, lines are parallel
@@ -192,11 +147,8 @@ export const lineLineIntersections = ([p1, p2], [p3, p4]) => {
 /**
  * Find intersections between a line and a cubic bezier.
  * Uses algebraic approach to solve cubic equation.
- * @param {Line} line
- * @param {Cubic} cubic
- * @returns {PrimitiveIntersectionResult[]}
  */
-export const lineCubicIntersections = ([a1, a2], [b1, b2, b3, b4]) => {
+export const lineCubicIntersections = ([a1, a2]: Line, [b1, b2, b3, b4]: Cubic): PrimitiveIntersectionResult[] => {
     // Transform cubic to line's coordinate system where line is y=0
     const lineDir = a2.clone().sub(a1);
     const lineLen = lineDir.length();
@@ -219,7 +171,7 @@ export const lineCubicIntersections = ([a1, a2], [b1, b2, b3, b4]) => {
         d0
     );
 
-    const results = [];
+    const results: PrimitiveIntersectionResult[] = [];
     const scratchPoint = new Vec();
 
     for (const time2 of roots) {
@@ -240,13 +192,8 @@ export const lineCubicIntersections = ([a1, a2], [b1, b2, b3, b4]) => {
     return results;
 };
 
-/**
- * Find intersections between a cubic and a line.
- * @param {Cubic} cubic
- * @param {Line} line
- * @returns {PrimitiveIntersectionResult[]}
- */
-export const cubicLineIntersections = (cubic, line) => {
+/** Find intersections between a cubic and a line. */
+export const cubicLineIntersections = (cubic: Cubic, line: Line): PrimitiveIntersectionResult[] => {
     return lineCubicIntersections(line, cubic).map(({ time1, time2 }) => ({
         time1: time2,
         time2: time1,
@@ -256,10 +203,9 @@ export const cubicLineIntersections = (cubic, line) => {
 /**
  * Solve cubic equation ax³ + bx² + cx + d = 0.
  * Returns real roots in [0, 1].
- * @private
  */
-const solveCubic = (a, b, c, d) => {
-    const roots = [];
+const solveCubic = (a: number, b: number, c: number, d: number): number[] => {
+    const roots: number[] = [];
     const epsilon = 1e-10;
 
     // Handle degenerate cases
@@ -314,11 +260,8 @@ const solveCubic = (a, b, c, d) => {
 // Cubic-Cubic Intersection
 // =============================================================================
 
-/**
- * Check if cubic bounding boxes overlap.
- * @private
- */
-const cubicBoundingBoxesOverlap = ([a1, a2, a3, a4], [b1, b2, b3, b4]) => {
+/** Check if cubic bounding boxes overlap. */
+const cubicBoundingBoxesOverlap = ([a1, a2, a3, a4]: Cubic, [b1, b2, b3, b4]: Cubic): boolean => {
     const axMin = Math.min(a1.x, a2.x, a3.x, a4.x);
     const axMax = Math.max(a1.x, a2.x, a3.x, a4.x);
     const ayMin = Math.min(a1.y, a2.y, a3.y, a4.y);
@@ -330,30 +273,21 @@ const cubicBoundingBoxesOverlap = ([a1, a2, a3, a4], [b1, b2, b3, b4]) => {
     return !(axMax < bxMin || axMin > bxMax || ayMax < byMin || ayMin > byMax);
 };
 
-/**
- * Check if cubic endpoints intersect as lines.
- * @private
- */
-const cubicLinesIntersect = ([a1, a2, a3, a4], [b1, b2, b3, b4]) => {
+/** Check if cubic endpoints intersect as lines. */
+const cubicLinesIntersect = ([a1, a2, a3, a4]: Cubic, [b1, b2, b3, b4]: Cubic): boolean => {
     return lineLineIntersections([a1, a4], [b1, b4]).length > 0;
 };
 
-/**
- * Check if two cubics are exactly equal.
- * @private
- */
-const cubicsEqual = ([a1, a2, a3, a4], [b1, b2, b3, b4]) => {
+/** Check if two cubics are exactly equal. */
+const cubicsEqual = ([a1, a2, a3, a4]: Cubic, [b1, b2, b3, b4]: Cubic): boolean => {
     return (
         (a1.equals(b1) && a2.equals(b2) && a3.equals(b3) && a4.equals(b4)) ||
         (a1.equals(b4) && a2.equals(b3) && a3.equals(b2) && a4.equals(b1))
     );
 };
 
-/**
- * Check if two cubics are approximately equal.
- * @private
- */
-const cubicsAlmostEqual = ([a1, a2, a3, a4], [b1, b2, b3, b4], tolerance) => {
+/** Check if two cubics are approximately equal. */
+const cubicsAlmostEqual = ([a1, a2, a3, a4]: Cubic, [b1, b2, b3, b4]: Cubic, tolerance: number): boolean => {
     return (
         (a1.distance(b1) <= tolerance &&
             a2.distance(b2) <= tolerance &&
@@ -366,17 +300,20 @@ const cubicsAlmostEqual = ([a1, a2, a3, a4], [b1, b2, b3, b4], tolerance) => {
     );
 };
 
-/**
- * Check if two cubics overlap (share a portion of their curve).
- * @private
- */
-const cubicsOverlap = (cubic1, cubic2, tolerance) => {
-    const matches = [];
-    const box1 = BoundingBox.fromPoints(cubic1).expandScalar(tolerance);
-    const box2 = BoundingBox.fromPoints(cubic2).expandScalar(tolerance);
+/** Check if two cubics overlap (share a portion of their curve). */
+const cubicsOverlap = (cubic1: Cubic, cubic2: Cubic, tolerance: number): boolean => {
+    const matches: PrimitiveIntersectionResult[] = [];
+    const box1 = BoundingBox.fromPoints(cubic1)!.expandScalar(tolerance);
+    const box2 = BoundingBox.fromPoints(cubic2)!.expandScalar(tolerance);
 
     // Check if endpoints are close to the other cubic
-    const checkEndpoint = (point, otherCubic, otherBox, time1, matches) => {
+    const checkEndpoint = (
+        point: Vec,
+        otherCubic: Cubic,
+        otherBox: BoundingBox,
+        time1: number,
+        matches: PrimitiveIntersectionResult[]
+    ): void => {
         if (otherBox.containsPoint(point)) {
             const { position, time } = positionAndTimeAtClosestPointOnCubic(point, otherCubic);
             if (position.distance(point) < tolerance) {
@@ -423,11 +360,8 @@ const cubicsOverlap = (cubic1, cubic2, tolerance) => {
 /**
  * Find intersections between two cubic bezier curves.
  * Uses recursive subdivision with bounding box pruning.
- * @param {Cubic} cubic1
- * @param {Cubic} cubic2
- * @returns {PrimitiveIntersectionResult[]}
  */
-export const cubicCubicIntersections = (cubic1, cubic2) => {
+export const cubicCubicIntersections = (cubic1: Cubic, cubic2: Cubic): PrimitiveIntersectionResult[] => {
     const tolerance = DEFAULT_TOLERANCE;
 
     // Early exit for equal or overlapping cubics
@@ -435,14 +369,21 @@ export const cubicCubicIntersections = (cubic1, cubic2) => {
     if (!cubicBoundingBoxesOverlap(cubic1, cubic2)) return [];
     if (cubicsOverlap(cubic1, cubic2, tolerance)) return [];
 
-    let candidates = [{ time1: 0, cubic1, time2: 0, cubic2 }];
+    interface Candidate {
+        time1: number;
+        cubic1: Cubic;
+        time2: number;
+        cubic2: Cubic;
+    }
+
+    let candidates: Candidate[] = [{ time1: 0, cubic1, time2: 0, cubic2 }];
     let timeLength = 1;
 
     const boundingBoxIterations = 10;
     const maxIterations = 20;
 
     for (let i = 0; i < maxIterations; i++) {
-        const nextCandidates = [];
+        const nextCandidates: Candidate[] = [];
         const nextTimeLength = timeLength * 0.5;
 
         for (const { time1, cubic1, time2, cubic2 } of candidates) {
@@ -474,7 +415,7 @@ export const cubicCubicIntersections = (cubic1, cubic2) => {
     }
 
     // Extract intersections from remaining candidates
-    const intersections = [];
+    const intersections: PrimitiveIntersectionResult[] = [];
     for (const { time1, cubic1, time2, cubic2 } of candidates) {
         const llIntersections = lineLineIntersections([cubic1[0], cubic1[3]], [cubic2[0], cubic2[3]]);
         for (const llIntersection of llIntersections) {
@@ -488,12 +429,8 @@ export const cubicCubicIntersections = (cubic1, cubic2) => {
     return intersections;
 };
 
-/**
- * Find self-intersections in a cubic bezier.
- * @param {Cubic} cubic
- * @returns {PrimitiveIntersectionResult[]}
- */
-export const cubicSelfIntersections = ([a1, a2, a3, a4]) => {
+/** Find self-intersections in a cubic bezier. */
+export const cubicSelfIntersections = ([a1, a2, a3, a4]: Cubic): PrimitiveIntersectionResult[] => {
     // TODO: Implement cubic self-intersection detection
     return [];
 };
@@ -502,13 +439,8 @@ export const cubicSelfIntersections = ([a1, a2, a3, a4]) => {
 // Generic Intersection
 // =============================================================================
 
-/**
- * Find intersections between two primitives (line or cubic).
- * @param {Line|Cubic} p1
- * @param {Line|Cubic} p2
- * @returns {PrimitiveIntersectionResult[]}
- */
-export const primitivePrimitiveIntersections = (p1, p2) => {
+/** Find intersections between two primitives (line or cubic). */
+export const primitivePrimitiveIntersections = (p1: Line | Cubic, p2: Line | Cubic): PrimitiveIntersectionResult[] => {
     if (p1.length === 2) {
         // p1 is Line
         if (p2.length === 2) return lineLineIntersections(p1, p2);

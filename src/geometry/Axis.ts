@@ -4,14 +4,13 @@
  * Axis helper class for alignment and snapping operations.
  */
 
-import { Geometry } from './Geometry.js';
+import { Geometry, type ClosestPointResult } from './Geometry.js';
 import { Vec } from './Vec.js';
+import type { AffineMatrix } from './Matrix.js';
+import type { BoundingBox } from './BoundingBox.js';
 
-/**
- * Default axis directions for snapping.
- * @type {Vec[]}
- */
-const defaultDirections = [
+/** Default axis directions for snapping. */
+const defaultDirections: Vec[] = [
     new Vec(1, 0),
     new Vec(0, 1),
     new Vec(1, 1).normalize(),
@@ -22,67 +21,39 @@ const defaultDirections = [
  * Axis class representing an infinite line through an origin point.
  *
  * @example
- * // Create a horizontal axis
  * const xAxis = new Axis(new Vec(0, 0), new Vec(1, 0));
- *
- * @example
- * // Create axis from closest direction to a point
- * const axis = Axis.fromOriginAndClosestDirectionToPoint(
- *     new Vec(50, 50),
- *     new Vec(100, 55)
- * ); // Returns axis closest to horizontal
- *
- * @extends Geometry
  */
 export class Axis extends Geometry {
     static displayName = 'Axis';
 
-    /**
-     * Create an axis.
-     * @param {Vec} [origin=new Vec()] - Origin point
-     * @param {Vec} [direction=new Vec(1, 0)] - Direction vector
-     */
-    constructor(origin = new Vec(), direction = new Vec(1, 0)) {
+    origin: Vec;
+    direction: Vec;
+
+    constructor(origin: Vec = new Vec(), direction: Vec = new Vec(1, 0)) {
         super();
-        /** @type {Vec} */
         this.origin = origin;
-        /** @type {Vec} */
         this.direction = direction;
     }
 
-    /**
-     * Create a copy of this axis.
-     * @returns {Axis}
-     */
-    clone() {
+    /** Create a copy of this axis. */
+    clone(): Axis {
         return new Axis(this.origin.clone(), this.direction.clone());
     }
 
-    /**
-     * Check if this axis is valid.
-     * @returns {boolean}
-     */
-    isValid() {
+    /** Check if this axis is valid. */
+    isValid(): boolean {
         return Vec.isValid(this.origin) && Vec.isValid(this.direction);
     }
 
-    /**
-     * Apply an affine transformation.
-     * @param {import('./Matrix.js').AffineMatrix} affineMatrix
-     * @returns {Axis} this
-     */
-    affineTransform(affineMatrix) {
+    /** Apply an affine transformation. */
+    affineTransform(affineMatrix: AffineMatrix): Axis {
         this.origin.affineTransform(affineMatrix);
         this.direction.affineTransformWithoutTranslation(affineMatrix);
         return this;
     }
 
-    /**
-     * Apply an affine transformation without translation.
-     * @param {import('./Matrix.js').AffineMatrix} affineMatrix
-     * @returns {Axis} this
-     */
-    affineTransformWithoutTranslation(affineMatrix) {
+    /** Apply an affine transformation without translation. */
+    affineTransformWithoutTranslation(affineMatrix: AffineMatrix): Axis {
         this.direction.affineTransformWithoutTranslation(affineMatrix);
         return this;
     }
@@ -91,11 +62,8 @@ export class Axis extends Geometry {
     // Collection methods
     // =========================================================================
 
-    /**
-     * Get all intersectable geometry.
-     * @returns {Axis[]}
-     */
-    allIntersectables() {
+    /** Get all intersectable geometry. */
+    allIntersectables(): Axis[] {
         return [this];
     }
 
@@ -103,13 +71,8 @@ export class Axis extends Geometry {
     // Closest Point
     // =========================================================================
 
-    /**
-     * Find closest point within distance.
-     * @param {number} maxDistance
-     * @param {Vec} point
-     * @returns {import('./Geometry.js').ClosestPointResult}
-     */
-    closestPointWithinDistanceToPoint(maxDistance, point) {
+    /** Find closest point within distance. */
+    closestPointWithinDistanceToPoint(maxDistance: number, point: Vec): ClosestPointResult {
         const position = point
             .clone()
             .projectToLine(this.origin, this.origin.clone().add(this.direction));
@@ -124,55 +87,37 @@ export class Axis extends Geometry {
     // Bounding Box (not applicable for infinite axis)
     // =========================================================================
 
-    /**
-     * Get loose bounding box (undefined for infinite axis).
-     * @returns {undefined}
-     */
-    looseBoundingBox() {
+    /** Get loose bounding box (undefined for infinite axis). */
+    looseBoundingBox(): undefined {
         return undefined;
     }
 
-    /**
-     * Get tight bounding box (undefined for infinite axis).
-     * @returns {undefined}
-     */
-    tightBoundingBox() {
+    /** Get tight bounding box (undefined for infinite axis). */
+    tightBoundingBox(): undefined {
         return undefined;
     }
 
-    /**
-     * Check if contained by bounding box (always false for infinite axis).
-     * @param {import('./BoundingBox.js').BoundingBox} box
-     * @returns {boolean}
-     */
-    isContainedByBoundingBox(box) {
+    /** Check if contained by bounding box (always false for infinite axis). */
+    isContainedByBoundingBox(box: BoundingBox): boolean {
         return false;
     }
 
     /**
      * Check if intersected by bounding box.
      * An infinite line intersects a box if the line passes through or near it.
-     * @param {import('./BoundingBox.js').BoundingBox} box
-     * @returns {boolean}
      */
-    isIntersectedByBoundingBox(box) {
-        // Simple approximation: check if center of box projects onto axis
+    isIntersectedByBoundingBox(box: BoundingBox): boolean {
         const center = box.center();
         const projected = center.clone().projectToLine(
             this.origin,
             this.origin.clone().add(this.direction)
         );
-        // Check if projection is somewhat near the box
         const diagonal = box.max.distance(box.min);
         return projected.distance(center) <= diagonal;
     }
 
-    /**
-     * Check if overlapped by bounding box.
-     * @param {import('./BoundingBox.js').BoundingBox} box
-     * @returns {boolean}
-     */
-    isOverlappedByBoundingBox(box) {
+    /** Check if overlapped by bounding box. */
+    isOverlappedByBoundingBox(box: BoundingBox): boolean {
         return this.isIntersectedByBoundingBox(box);
     }
 
@@ -180,24 +125,20 @@ export class Axis extends Geometry {
     // Static Methods
     // =========================================================================
 
-    /**
-     * Validate that value is a valid Axis.
-     * @param {*} a
-     * @returns {boolean}
-     */
-    static isValid(a) {
+    /** Validate that value is a valid Axis. */
+    static isValid(a: unknown): a is Axis {
         return a instanceof Axis && a.isValid();
     }
 
     /**
      * Create axis from origin and closest predefined direction to a point.
      * Useful for snapping to common axis directions.
-     * @param {Vec} origin - Origin point
-     * @param {Vec} point - Target point
-     * @param {Vec[]} [directions=defaultDirections] - Available directions
-     * @returns {Axis}
      */
-    static fromOriginAndClosestDirectionToPoint(origin, point, directions = defaultDirections) {
+    static fromOriginAndClosestDirectionToPoint(
+        origin: Vec,
+        point: Vec,
+        directions: Vec[] = defaultDirections
+    ): Axis {
         let direction = point.clone().sub(origin);
         let closestAxis = directions[0];
         let closestMag = -1;

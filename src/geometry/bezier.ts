@@ -8,20 +8,15 @@
 
 import { Vec } from './Vec.js';
 
-/**
- * @typedef {[Vec, Vec, Vec, Vec]} Cubic
- * Four control points defining a cubic bezier curve.
- */
+/** Four control points defining a cubic bezier curve. */
+export type Cubic = [Vec, Vec, Vec, Vec];
 
 // =============================================================================
 // Closest Point on Cubic
 // =============================================================================
 
-/**
- * Precomputed "z" coefficients for Bernstein-Bezier conversion.
- * @private
- */
-const Z_COEFFICIENTS = [
+/** Precomputed "z" coefficients for Bernstein-Bezier conversion. */
+const Z_COEFFICIENTS: number[][] = [
     [1.0, 0.6, 0.3, 0.1],
     [0.4, 0.6, 0.6, 0.4],
     [0.1, 0.3, 0.6, 1.0],
@@ -30,27 +25,24 @@ const Z_COEFFICIENTS = [
 /**
  * Convert to Bernstein-Bezier form for closest point calculation.
  * This creates a 5th-degree polynomial whose roots give candidate t values.
- *
- * @param {Vec} point - Point to find closest position to
- * @param {Cubic} cubic - Cubic bezier control points
- * @returns {Vec[]} 6 control points of the 5th-degree polynomial
+ * Returns the 6 control points of the 5th-degree polynomial.
  */
-export const bernsteinBezierFormForClosestPointOnCubic = (point, cubic) => {
+export const bernsteinBezierFormForClosestPointOnCubic = (point: Vec, cubic: Cubic): Vec[] => {
     const c = cubic.map((v) => v.clone().sub(point));
     const d = new Vec();
-    const cDotD = Array(3);
+    const cDotD: number[][] = Array(3);
 
     for (let j = 0; j < 3; ++j) {
         d.copy(cubic[j + 1])
             .sub(cubic[j])
             .mulScalar(3);
-        const row = (cDotD[j] = new Array(4));
+        const row: number[] = (cDotD[j] = new Array(4));
         for (let i = 0; i < 4; ++i) {
             row[i] = d.dot(c[i]);
         }
     }
 
-    const w = new Array(6);
+    const w: Vec[] = new Array(6);
     for (let i = 0; i <= 5; ++i) {
         w[i] = new Vec(i / 5, 0);
     }
@@ -76,15 +68,8 @@ export const bernsteinBezierFormForClosestPointOnCubic = (point, cubic) => {
 const FIND_ROOTS_MAX_DEPTH = 64;
 const FIND_ROOTS_EPSILON = Math.pow(2, -FIND_ROOTS_MAX_DEPTH - 1);
 
-/**
- * Find all roots of a polynomial in Bernstein-Bezier form in [0, 1].
- *
- * @param {Vec[]} w - Control points of the polynomial
- * @param {number} degree - Degree of the polynomial
- * @param {number} [depth=0] - Current recursion depth
- * @returns {number[]} Array of root t values
- */
-export const findRoots = (w, degree, depth = 0) => {
+/** Find all roots of a polynomial in Bernstein-Bezier form in [0, 1]. */
+export const findRoots = (w: Vec[], degree: number, depth: number = 0): number[] => {
     const crossingCount = zeroCrossingCount(w);
     if (crossingCount === 0) return [];
     if (crossingCount === 1) {
@@ -105,13 +90,8 @@ export const findRoots = (w, degree, depth = 0) => {
     return leftRoots.concat(rightRoots);
 };
 
-/**
- * Count zero crossings in the control polygon.
- * @private
- * @param {Vec[]} points
- * @returns {number}
- */
-const zeroCrossingCount = (points) => {
+/** Count zero crossings in the control polygon. */
+const zeroCrossingCount = (points: Vec[]): number => {
     let count = 0;
     let prevSign = Math.sign(points[0].y);
 
@@ -129,12 +109,8 @@ const zeroCrossingCount = (points) => {
 /**
  * Check if control polygon is flat enough for linear approximation.
  * Uses corrected algorithm from James Walker.
- * @private
- * @param {Vec[]} points
- * @param {number} degree
- * @returns {boolean}
  */
-const isControlPolygonFlatEnough = (points, degree) => {
+const isControlPolygonFlatEnough = (points: Vec[], degree: number): boolean => {
     // Implicit equation for line connecting first and last control points
     const a = points[0].y - points[degree].y;
     const b = points[degree].x - points[0].x;
@@ -186,14 +162,8 @@ const isControlPolygonFlatEnough = (points, degree) => {
     return error < FIND_ROOTS_EPSILON;
 };
 
-/**
- * Compute x-intercept of chord from first to last control point.
- * @private
- * @param {Vec[]} points
- * @param {number} degree
- * @returns {number}
- */
-const computeXIntercept = (points, degree) => {
+/** Compute x-intercept of chord from first to last control point. */
+const computeXIntercept = (points: Vec[], degree: number): number => {
     const p0 = points[0];
     const p1 = points[degree];
     const dx = p1.x - p0.x;
@@ -206,15 +176,9 @@ const computeXIntercept = (points, degree) => {
 // Bezier Subdivision
 // =============================================================================
 
-/**
- * Split a bezier curve at parameter t using de Casteljau's algorithm.
- *
- * @param {Vec[]} points - Control points
- * @param {number} t - Parameter value (0-1)
- * @returns {[Vec[], Vec[]]} Left and right subdivided curves
- */
-export const splitBezier = (points, t) => {
-    const scratch = new Array(points.length);
+/** Split a bezier curve at parameter t using de Casteljau's algorithm. */
+export const splitBezier = (points: Vec[], t: number): [Vec[], Vec[]] => {
+    const scratch: Vec[][] = new Array(points.length);
     const degree = points.length - 1;
 
     // Copy control points
@@ -233,8 +197,8 @@ export const splitBezier = (points, t) => {
     }
 
     // Extract left and right curves
-    const pointsLeft = new Array(degree + 1);
-    const pointsRight = new Array(degree + 1);
+    const pointsLeft: Vec[] = new Array(degree + 1);
+    const pointsRight: Vec[] = new Array(degree + 1);
     for (let j = 0; j <= degree; ++j) {
         pointsLeft[j] = scratch[j][0];
         pointsRight[j] = scratch[degree - j][j];
@@ -247,15 +211,8 @@ export const splitBezier = (points, t) => {
 // Cubic Bezier Operations
 // =============================================================================
 
-/**
- * Evaluate a point on a cubic bezier at parameter t.
- *
- * @param {Vec} out - Output vector to store result
- * @param {Cubic} cubic - Four control points [p0, p1, p2, p3]
- * @param {number} t - Parameter value (0-1)
- * @returns {Vec} The out vector
- */
-export const pointOnCubicAtTime = (out, [p0, p1, p2, p3], t) => {
+/** Evaluate a point on a cubic bezier at parameter t. */
+export const pointOnCubicAtTime = (out: Vec, [p0, p1, p2, p3]: Cubic, t: number): Vec => {
     if (t === 0) return out.copy(p0);
     if (t === 1) return out.copy(p3);
 
@@ -274,14 +231,8 @@ export const pointOnCubicAtTime = (out, [p0, p1, p2, p3], t) => {
     );
 };
 
-/**
- * Split a cubic bezier at parameter t.
- *
- * @param {Cubic} cubic - Four control points
- * @param {number} t - Split parameter (0-1)
- * @returns {[Cubic, Cubic]} Two cubic curves
- */
-export const cubicsBySplittingCubicAtTime = ([p0, p1, p2, p3], t) => {
+/** Split a cubic bezier at parameter t. */
+export const cubicsBySplittingCubicAtTime = ([p0, p1, p2, p3]: Cubic, t: number): [Cubic, Cubic] => {
     const m = Vec.mix(p1, p2, t);
     const a0 = p0;
     const a1 = Vec.mix(p0, p1, t);
@@ -297,15 +248,8 @@ export const cubicsBySplittingCubicAtTime = ([p0, p1, p2, p3], t) => {
     ];
 };
 
-/**
- * Trim a cubic bezier to a sub-range.
- *
- * @param {Cubic} cubic - Four control points
- * @param {number} start - Start parameter (0-1)
- * @param {number} end - End parameter (0-1)
- * @returns {Cubic} Trimmed curve
- */
-export const cubicByTrimmingCubic = (cubic, start, end) => {
+/** Trim a cubic bezier to a sub-range. */
+export const cubicByTrimmingCubic = (cubic: Cubic, start: number, end: number): Cubic => {
     if (start > end) {
         [start, end] = [end, start];
         cubic = [cubic[3], cubic[2], cubic[1], cubic[0]];
@@ -315,14 +259,11 @@ export const cubicByTrimmingCubic = (cubic, start, end) => {
     return cubic;
 };
 
-/**
- * Find position and time of closest point on a cubic bezier.
- *
- * @param {Vec} point - Point to find closest position to
- * @param {Cubic} cubic - Four control points
- * @returns {{position: Vec, time: number}} Closest point and parameter
- */
-export const positionAndTimeAtClosestPointOnCubic = (point, cubic) => {
+/** Find position and time of closest point on a cubic bezier. */
+export const positionAndTimeAtClosestPointOnCubic = (
+    point: Vec,
+    cubic: Cubic
+): { position: Vec; time: number } => {
     const w = bernsteinBezierFormForClosestPointOnCubic(point, cubic);
     const roots = findRoots(w, 5);
 

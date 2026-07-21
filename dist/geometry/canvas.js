@@ -15,19 +15,13 @@ else if (typeof OffscreenCanvas !== 'undefined') {
     dummyCanvasCtx = dummyCanvas.getContext('2d');
 }
 export { dummyCanvasCtx };
-/**
- * Check if a styled path or shape contains a point.
- * @param {import('./Path.js').Path | import('./Shape.js').Shape} geom
- * @param {import('./Vec.js').Vec} point
- * @returns {boolean}
- */
+/** Check if a styled path or shape contains a point. */
 export const styleContainsPoint = (geom, point) => {
     if (!dummyCanvasCtx)
         return false;
     const { stroke, fill } = geom;
-    const hasVisibleFill = fill && fill.color.a > 0;
-    const hasVisibleStroke = stroke && !stroke.hairline && stroke.color.a > 0;
-    // Optimization: exit early if there's no fill or stroke.
+    const hasVisibleFill = !!(fill && fill.color.a > 0);
+    const hasVisibleStroke = !!(stroke && !stroke.hairline && stroke.color.a > 0);
     if (!hasVisibleFill && !hasVisibleStroke)
         return false;
     dummyCanvasCtx.beginPath();
@@ -54,12 +48,7 @@ export const styleContainsPoint = (geom, point) => {
     }
     return false;
 };
-/**
- * Paint a path or shape to a canvas context.
- * @param {import('./Path.js').Path | import('./Shape.js').Shape} item
- * @param {CanvasRenderingContext2D} ctx
- * @param {import('./Geometry.js').ExportOptions} [options]
- */
+/** Paint a path or shape to a canvas context. */
 export const paintToCanvas = (item, ctx, options = {}) => {
     if (!ctx)
         return;
@@ -68,7 +57,6 @@ export const paintToCanvas = (item, ctx, options = {}) => {
     let stroke = item.stroke;
     let fill = item.fill;
     if (!stroke && !fill) {
-        // If no stroke or fill, use the default stroke.
         stroke = new Stroke();
     }
     if (fill) {

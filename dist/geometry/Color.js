@@ -11,53 +11,23 @@ import { expressionCodeForNumber } from './math.js';
  * @example
  * const red = new Color(1, 0, 0);
  * red.toCSSString(); // "#ff0000"
- *
- * @example
- * const semiTransparentBlue = new Color(0, 0, 1, 0.5);
- * semiTransparentBlue.toCSSString(); // "rgba(0, 0, 255, 0.5)"
- *
- * @example
- * const color = Color.fromCSSString('#ff6600');
- * const [h, s, v, a] = color.toHSVA();
  */
 export class Color {
-    /**
-     * Create a color.
-     * @param {number} [r=0] - Red component (0-1)
-     * @param {number} [g=0] - Green component (0-1)
-     * @param {number} [b=0] - Blue component (0-1)
-     * @param {number} [a=1] - Alpha component (0-1)
-     */
     constructor(r = 0, g = 0, b = 0, a = 1) {
-        /** @type {number} */
         this.r = r;
-        /** @type {number} */
         this.g = g;
-        /** @type {number} */
         this.b = b;
-        /** @type {number} */
         this.a = a;
     }
-    /**
-     * Create a copy of this color.
-     * @returns {Color}
-     */
+    /** Create a copy of this color. */
     clone() {
         return new Color(this.r, this.g, this.b, this.a);
     }
-    /**
-     * Check exact equality.
-     * @param {Color} color
-     * @returns {boolean}
-     */
+    /** Check exact equality. */
     equals(color) {
         return this.r === color.r && this.g === color.g && this.b === color.b && this.a === color.a;
     }
-    /**
-     * Convert to CSS string.
-     * Returns hex (#rrggbb) for opaque colors, rgba() for transparent.
-     * @returns {string}
-     */
+    /** Convert to CSS string. Returns hex (#rrggbb) for opaque colors, rgba() for transparent. */
     toCSSString() {
         const r = Math.round(this.r * 255);
         const g = Math.round(this.g * 255);
@@ -71,21 +41,13 @@ export class Color {
             return `rgba(${r}, ${g}, ${b}, ${this.a})`;
         }
     }
-    /**
-     * Convert to expression code string.
-     * @param {number} [minFractionDigits=0]
-     * @param {number} [maxFractionDigits=3]
-     * @returns {string}
-     */
+    /** Convert to expression code string. */
     toExpressionCode(minFractionDigits = 0, maxFractionDigits = 3) {
         const { r, g, b, a } = this;
         const expr = (x) => expressionCodeForNumber(x, minFractionDigits, maxFractionDigits);
         return `Color(${expr(r)}, ${expr(g)}, ${expr(b)}, ${expr(a)})`;
     }
-    /**
-     * Convert to HSVA array.
-     * @returns {[number, number, number, number]} [h, s, v, a] all in range 0-1
-     */
+    /** Convert to HSVA array. Returns [h, s, v, a] all in range 0-1. */
     toHSVA() {
         let h, s;
         const { r, g, b, a } = this;
@@ -121,11 +83,7 @@ export class Color {
         }
         return [h, s, v, a];
     }
-    /**
-     * Validate that value is a valid Color.
-     * @param {*} color
-     * @returns {boolean}
-     */
+    /** Validate that value is a valid Color. */
     static isValid(color) {
         return (color instanceof Color &&
             typeof color.r === 'number' &&
@@ -133,14 +91,7 @@ export class Color {
             typeof color.b === 'number' &&
             typeof color.a === 'number');
     }
-    /**
-     * Create color from HSVA values.
-     * @param {number} h - Hue (0-1)
-     * @param {number} s - Saturation (0-1)
-     * @param {number} v - Value (0-1)
-     * @param {number} a - Alpha (0-1)
-     * @returns {Color}
-     */
+    /** Create color from HSVA values. */
     static fromHSVA(h, s, v, a) {
         h = h * 6;
         const hi = Math.floor(h) % 6;
@@ -166,8 +117,6 @@ export class Color {
     /**
      * Parse a CSS color string.
      * Supports: keywords, hex (#rgb, #rgba, #rrggbb, #rrggbbaa), rgb(), rgba()
-     * @param {string} cssString
-     * @returns {Color}
      */
     static fromCSSString(cssString) {
         cssString = cssString.trim().toLowerCase();
@@ -228,10 +177,7 @@ const fromAlphaString = (s) => {
 // =============================================================================
 // CSS Color Keywords
 // =============================================================================
-/**
- * CSS color keywords mapping to [r, g, b, a] (r/g/b in 0-255, a in 0-1)
- * @type {Object.<string, [number, number, number, number]>}
- */
+/** CSS color keywords mapping to [r, g, b, a] (r/g/b in 0-255, a in 0-1) */
 const cssColorKeywords = {
     aliceblue: [240, 248, 255, 1],
     antiquewhite: [250, 235, 215, 1],

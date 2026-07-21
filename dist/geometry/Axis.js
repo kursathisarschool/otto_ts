@@ -5,10 +5,7 @@
  */
 import { Geometry } from './Geometry.js';
 import { Vec } from './Vec.js';
-/**
- * Default axis directions for snapping.
- * @type {Vec[]}
- */
+/** Default axis directions for snapping. */
 const defaultDirections = [
     new Vec(1, 0),
     new Vec(0, 1),
@@ -19,60 +16,29 @@ const defaultDirections = [
  * Axis class representing an infinite line through an origin point.
  *
  * @example
- * // Create a horizontal axis
  * const xAxis = new Axis(new Vec(0, 0), new Vec(1, 0));
- *
- * @example
- * // Create axis from closest direction to a point
- * const axis = Axis.fromOriginAndClosestDirectionToPoint(
- *     new Vec(50, 50),
- *     new Vec(100, 55)
- * ); // Returns axis closest to horizontal
- *
- * @extends Geometry
  */
 export class Axis extends Geometry {
-    /**
-     * Create an axis.
-     * @param {Vec} [origin=new Vec()] - Origin point
-     * @param {Vec} [direction=new Vec(1, 0)] - Direction vector
-     */
     constructor(origin = new Vec(), direction = new Vec(1, 0)) {
         super();
-        /** @type {Vec} */
         this.origin = origin;
-        /** @type {Vec} */
         this.direction = direction;
     }
-    /**
-     * Create a copy of this axis.
-     * @returns {Axis}
-     */
+    /** Create a copy of this axis. */
     clone() {
         return new Axis(this.origin.clone(), this.direction.clone());
     }
-    /**
-     * Check if this axis is valid.
-     * @returns {boolean}
-     */
+    /** Check if this axis is valid. */
     isValid() {
         return Vec.isValid(this.origin) && Vec.isValid(this.direction);
     }
-    /**
-     * Apply an affine transformation.
-     * @param {import('./Matrix.js').AffineMatrix} affineMatrix
-     * @returns {Axis} this
-     */
+    /** Apply an affine transformation. */
     affineTransform(affineMatrix) {
         this.origin.affineTransform(affineMatrix);
         this.direction.affineTransformWithoutTranslation(affineMatrix);
         return this;
     }
-    /**
-     * Apply an affine transformation without translation.
-     * @param {import('./Matrix.js').AffineMatrix} affineMatrix
-     * @returns {Axis} this
-     */
+    /** Apply an affine transformation without translation. */
     affineTransformWithoutTranslation(affineMatrix) {
         this.direction.affineTransformWithoutTranslation(affineMatrix);
         return this;
@@ -80,22 +46,14 @@ export class Axis extends Geometry {
     // =========================================================================
     // Collection methods
     // =========================================================================
-    /**
-     * Get all intersectable geometry.
-     * @returns {Axis[]}
-     */
+    /** Get all intersectable geometry. */
     allIntersectables() {
         return [this];
     }
     // =========================================================================
     // Closest Point
     // =========================================================================
-    /**
-     * Find closest point within distance.
-     * @param {number} maxDistance
-     * @param {Vec} point
-     * @returns {import('./Geometry.js').ClosestPointResult}
-     */
+    /** Find closest point within distance. */
     closestPointWithinDistanceToPoint(maxDistance, point) {
         const position = point
             .clone()
@@ -109,68 +67,42 @@ export class Axis extends Geometry {
     // =========================================================================
     // Bounding Box (not applicable for infinite axis)
     // =========================================================================
-    /**
-     * Get loose bounding box (undefined for infinite axis).
-     * @returns {undefined}
-     */
+    /** Get loose bounding box (undefined for infinite axis). */
     looseBoundingBox() {
         return undefined;
     }
-    /**
-     * Get tight bounding box (undefined for infinite axis).
-     * @returns {undefined}
-     */
+    /** Get tight bounding box (undefined for infinite axis). */
     tightBoundingBox() {
         return undefined;
     }
-    /**
-     * Check if contained by bounding box (always false for infinite axis).
-     * @param {import('./BoundingBox.js').BoundingBox} box
-     * @returns {boolean}
-     */
+    /** Check if contained by bounding box (always false for infinite axis). */
     isContainedByBoundingBox(box) {
         return false;
     }
     /**
      * Check if intersected by bounding box.
      * An infinite line intersects a box if the line passes through or near it.
-     * @param {import('./BoundingBox.js').BoundingBox} box
-     * @returns {boolean}
      */
     isIntersectedByBoundingBox(box) {
-        // Simple approximation: check if center of box projects onto axis
         const center = box.center();
         const projected = center.clone().projectToLine(this.origin, this.origin.clone().add(this.direction));
-        // Check if projection is somewhat near the box
         const diagonal = box.max.distance(box.min);
         return projected.distance(center) <= diagonal;
     }
-    /**
-     * Check if overlapped by bounding box.
-     * @param {import('./BoundingBox.js').BoundingBox} box
-     * @returns {boolean}
-     */
+    /** Check if overlapped by bounding box. */
     isOverlappedByBoundingBox(box) {
         return this.isIntersectedByBoundingBox(box);
     }
     // =========================================================================
     // Static Methods
     // =========================================================================
-    /**
-     * Validate that value is a valid Axis.
-     * @param {*} a
-     * @returns {boolean}
-     */
+    /** Validate that value is a valid Axis. */
     static isValid(a) {
         return a instanceof Axis && a.isValid();
     }
     /**
      * Create axis from origin and closest predefined direction to a point.
      * Useful for snapping to common axis directions.
-     * @param {Vec} origin - Origin point
-     * @param {Vec} point - Target point
-     * @param {Vec[]} [directions=defaultDirections] - Available directions
-     * @returns {Axis}
      */
     static fromOriginAndClosestDirectionToPoint(origin, point, directions = defaultDirections) {
         let direction = point.clone().sub(origin);

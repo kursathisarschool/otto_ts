@@ -6,19 +6,6 @@
  */
 import { AffineMatrix } from './Matrix.js';
 /**
- * @typedef {Object} ClosestPointResult
- * @property {number} distance - Distance to the closest point
- * @property {import('./Vec.js').Vec} [position] - Position of closest point
- * @property {number} [time] - Time parameter at closest point (for paths)
- */
-/**
- * @typedef {Object} ExportOptions
- * @property {number} [hairlineStrokeWidth] - Width to use for hairline strokes
- * @property {number} [maxPrecision] - Maximum decimal precision
- * @property {boolean} [useSVGPathClipping] - Use SVG clip paths for stroke alignment
- * @property {boolean} [useSVGPathClipping] - Use SVG path clipping
- */
-/**
  * Abstract base class for all geometry types.
  * Provides default implementations that subclasses override.
  *
@@ -30,264 +17,146 @@ import { AffineMatrix } from './Matrix.js';
  * - affineTransformWithoutTranslation()
  */
 export class Geometry {
-    /**
-     * Create a copy of this geometry.
-     * @abstract
-     * @returns {Geometry}
-     */
+    /** Create a copy of this geometry. */
     clone() {
         throw new Error('clone() must be implemented by subclass');
     }
-    /**
-     * Check if this geometry is valid.
-     * @abstract
-     * @returns {boolean}
-     */
+    /** Check if this geometry is valid. */
     isValid() {
         throw new Error('isValid() must be implemented by subclass');
     }
-    /**
-     * Find the closest point within a maximum distance.
-     * @abstract
-     * @param {number} maxDistance
-     * @param {import('./Vec.js').Vec} point
-     * @returns {ClosestPointResult}
-     */
+    /** Find the closest point within a maximum distance. */
     closestPointWithinDistanceToPoint(maxDistance, point) {
         return { distance: Infinity };
     }
-    /**
-     * Apply an affine transformation matrix.
-     * @abstract
-     * @param {AffineMatrix} affineMatrix
-     * @returns {Geometry}
-     */
+    /** Apply an affine transformation matrix. */
     affineTransform(affineMatrix) {
         throw new Error('affineTransform() must be implemented by subclass');
     }
-    /**
-     * Apply an affine transformation without translation.
-     * @abstract
-     * @param {AffineMatrix} affineMatrix
-     * @returns {Geometry}
-     */
+    /** Apply an affine transformation without translation. */
     affineTransformWithoutTranslation(affineMatrix) {
         throw new Error('affineTransformWithoutTranslation() must be implemented by subclass');
     }
-    /**
-     * Apply a transform object.
-     * @param {import('./Matrix.js').TransformArgs} transform
-     * @returns {Geometry}
-     */
+    /** Apply a transform object. */
     transform(transform) {
         return this.affineTransform(AffineMatrix.fromTransform(transform));
     }
     // =========================================================================
     // Collection methods (return empty by default)
     // =========================================================================
-    /**
-     * Get all shapes in this geometry.
-     * @returns {Array}
-     */
+    /** Get all shapes in this geometry. */
     allShapes() {
         return [];
     }
-    /**
-     * Get all paths in this geometry.
-     * @returns {Array}
-     */
+    /** Get all paths in this geometry. */
     allPaths() {
         return [];
     }
-    /**
-     * Get all anchors in this geometry.
-     * @returns {Array}
-     */
+    /** Get all anchors in this geometry. */
     allAnchors() {
         return [];
     }
-    /**
-     * Get all orphaned anchors (not part of a path).
-     * @returns {Array}
-     */
+    /** Get all orphaned anchors (not part of a path). */
     allOrphanedAnchors() {
         return [];
     }
-    /**
-     * Get all shapes and orphaned paths.
-     * @returns {Array}
-     */
+    /** Get all shapes and orphaned paths. */
     allShapesAndOrphanedPaths() {
         return [];
     }
-    /**
-     * Get all intersectable geometry (paths and axes).
-     * @returns {Array}
-     */
+    /** Get all intersectable geometry (paths and axes). */
     allIntersectables() {
         return [];
     }
     // =========================================================================
     // Operations (return this by default)
     // =========================================================================
-    /**
-     * Reverse the direction of this geometry.
-     * @returns {Geometry}
-     */
+    /** Reverse the direction of this geometry. */
     reverse() {
         return this;
     }
     // =========================================================================
     // Style methods (return this by default)
     // =========================================================================
-    /**
-     * Assign a fill style.
-     * @param {import('./Style.js').Fill} fill
-     * @returns {Geometry}
-     */
+    /** Assign a fill style. */
     assignFill(fill) {
         return this;
     }
-    /**
-     * Remove fill style.
-     * @returns {Geometry}
-     */
+    /** Remove fill style. */
     removeFill() {
         return this;
     }
-    /**
-     * Assign a stroke style.
-     * @param {import('./Style.js').Stroke} stroke
-     * @returns {Geometry}
-     */
+    /** Assign a stroke style. */
     assignStroke(stroke) {
         return this;
     }
-    /**
-     * Remove stroke style.
-     * @returns {Geometry}
-     */
+    /** Remove stroke style. */
     removeStroke() {
         return this;
     }
-    /**
-     * Assign both fill and stroke.
-     * @param {import('./Style.js').Fill} fill
-     * @param {import('./Style.js').Stroke} stroke
-     * @returns {Geometry}
-     */
+    /** Assign both fill and stroke. */
     assignStyle(fill, stroke) {
         return this;
     }
-    /**
-     * Copy style from another geometry.
-     * @param {Geometry} item
-     * @returns {Geometry}
-     */
+    /** Copy style from another geometry. */
     copyStyle(item) {
         return this;
     }
-    /**
-     * Scale stroke width.
-     * @param {number} scaleFactor
-     * @returns {Geometry}
-     */
+    /** Scale stroke width. */
     scaleStroke(scaleFactor) {
         return this;
     }
     // =========================================================================
     // Export methods (return empty by default)
     // =========================================================================
-    /**
-     * Convert to SVG string.
-     * @param {ExportOptions} [options]
-     * @returns {string}
-     */
+    /** Convert to SVG string. */
     toSVGString(options) {
         return '';
     }
-    /**
-     * Convert to SVG path string.
-     * @param {ExportOptions} [options]
-     * @returns {string}
-     */
+    /** Convert to SVG path string. */
     toSVGPathString(options) {
         return '';
     }
-    /**
-     * Paint to canvas context.
-     * @param {CanvasRenderingContext2D} ctx
-     * @param {ExportOptions} [options]
-     */
+    /** Paint to canvas context. */
     paintToCanvas(ctx, options) { }
     // =========================================================================
     // Bounding box methods (return undefined by default)
     // =========================================================================
-    /**
-     * Get loose bounding box (may be larger than tight).
-     * @returns {import('./BoundingBox.js').BoundingBox|undefined}
-     */
+    /** Get loose bounding box (may be larger than tight). */
     looseBoundingBox() {
         return undefined;
     }
-    /**
-     * Get tight bounding box.
-     * @returns {import('./BoundingBox.js').BoundingBox|undefined}
-     */
+    /** Get tight bounding box. */
     tightBoundingBox() {
         return undefined;
     }
     // =========================================================================
     // Hit testing methods (return false by default)
     // =========================================================================
-    /**
-     * Check if fully contained by a bounding box.
-     * @param {import('./BoundingBox.js').BoundingBox} box
-     * @returns {boolean}
-     */
+    /** Check if fully contained by a bounding box. */
     isContainedByBoundingBox(box) {
         return false;
     }
-    /**
-     * Check if intersected by a bounding box.
-     * @param {import('./BoundingBox.js').BoundingBox} box
-     * @returns {boolean}
-     */
+    /** Check if intersected by a bounding box. */
     isIntersectedByBoundingBox(box) {
         return false;
     }
-    /**
-     * Check if overlapped by a bounding box.
-     * @param {import('./BoundingBox.js').BoundingBox} box
-     * @returns {boolean}
-     */
+    /** Check if overlapped by a bounding box. */
     isOverlappedByBoundingBox(box) {
         return false;
     }
-    /**
-     * Check if contains a point.
-     * @param {import('./Vec.js').Vec} point
-     * @returns {boolean}
-     */
+    /** Check if contains a point. */
     containsPoint(point) {
         return false;
     }
-    /**
-     * Check if style contains a point (includes stroke width).
-     * @param {import('./Vec.js').Vec} point
-     * @returns {boolean}
-     */
+    /** Check if style contains a point (includes stroke width). */
     styleContainsPoint(point) {
         return false;
     }
     // =========================================================================
     // Static validation
     // =========================================================================
-    /**
-     * Validate that value is a valid Geometry.
-     * @param {*} a
-     * @returns {boolean}
-     */
+    /** Validate that value is a valid Geometry. */
     static isValid(a) {
         if (a instanceof Geometry)
             return a.isValid();
