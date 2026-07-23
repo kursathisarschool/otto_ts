@@ -10,7 +10,7 @@ import { Vec } from '../Vec.js';
 let testCount = 0;
 let passCount = 0;
 
-const test = (name, passed) => {
+const test = (name: string, passed: boolean) => {
     testCount++;
     if (passed) {
         passCount++;
@@ -20,7 +20,7 @@ const test = (name, passed) => {
     }
 };
 
-const approx = (a, b, tolerance = 0.001) => Math.abs(a - b) < tolerance;
+const approx = (a: number, b: number, tolerance: number = 0.001) => Math.abs(a - b) < tolerance;
 
 console.log('Axis.js tests:\n');
 

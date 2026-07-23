@@ -4,11 +4,12 @@
 
 import { BoundingBox } from '../BoundingBox.js';
 import { Vec } from '../Vec.js';
+import type { Cubic } from '../bezier.js';
 
 let testCount = 0;
 let passCount = 0;
 
-const test = (name, passed) => {
+const test = (name: string, passed: boolean) => {
     testCount++;
     if (passed) {
         passCount++;
@@ -18,7 +19,7 @@ const test = (name, passed) => {
     }
 };
 
-const approx = (a, b, tolerance = 0.0001) => Math.abs(a - b) < tolerance;
+const approx = (a: number, b: number, tolerance: number = 0.0001) => Math.abs(a - b) < tolerance;
 
 console.log('BoundingBox.js tests:\n');
 
@@ -210,7 +211,7 @@ test('fromPoints() returns null for empty array', (() => {
 })());
 
 test('fromPoints() creates box from single point', (() => {
-    const box = BoundingBox.fromPoints([new Vec(10, 20)]);
+    const box = BoundingBox.fromPoints([new Vec(10, 20)])!;
     return box.min.x === 10 && box.min.y === 20 && box.max.x === 10 && box.max.y === 20;
 })());
 
@@ -219,12 +220,12 @@ test('fromPoints() creates box from multiple points', (() => {
         new Vec(10, 20),
         new Vec(30, 5),
         new Vec(15, 40),
-    ]);
+    ])!;
     return box.min.x === 10 && box.min.y === 5 && box.max.x === 30 && box.max.y === 40;
 })());
 
 test('fromCubic() creates loose bounding box', (() => {
-    const cubic = [
+    const cubic: Cubic = [
         new Vec(0, 0),
         new Vec(10, 20),
         new Vec(30, -5),

@@ -8,7 +8,10 @@
 import { AffineMatrix, type TransformArgs } from './Matrix.js';
 import type { Vec } from './Vec.js';
 import type { BoundingBox } from './BoundingBox.js';
-import type { Fill, Stroke } from './Style.js';
+
+// TODO: Style.ts'i çevirince bu iki tipi oradan gerçek tanımlarıyla import edeceğiz.
+type Fill = unknown;
+type Stroke = unknown;
 
 export interface ClosestPointResult {
     distance: number;

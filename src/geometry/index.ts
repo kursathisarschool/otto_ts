@@ -1,4 +1,4 @@
-import { _initPathKit } from './pathkit.js';
+import { _initPathKit, type InitPathKitOptions } from './pathkit.js';
 
 export * from './Anchor.js';
 export * from './Axis.js';
@@ -23,10 +23,7 @@ export * from './canvas.js';
 // Edge selection module
 export * from './edge/index.js';
 
-/**
- * Initialize geometry library (PathKit stub).
- * @returns {Promise<null>}
- */
-export const initCuttleGeometry = async (options) => {
+/** Initialize geometry library (PathKit stub). */
+export const initCuttleGeometry = async (options?: InitPathKitOptions): Promise<any> => {
     return await _initPathKit(options);
 };

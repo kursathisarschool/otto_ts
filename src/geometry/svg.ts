@@ -4,27 +4,22 @@
 
 import { Anchor } from './Anchor.js';
 import { Color } from './Color.js';
+import { Geometry, type ExportOptions } from './Geometry.js';
 import { Group } from './Group.js';
 import { clamp } from './math.js';
 import { AffineMatrix } from './Matrix.js';
 import { Path } from './Path.js';
 import { Shape } from './Shape.js';
 import { Fill, Stroke } from './Style.js';
-import { isValidUnit, scaleFactorForUnitConversion } from './units.js';
+import { isValidUnit, scaleFactorForUnitConversion, type Unit } from './units.js';
 import { Vec } from './Vec.js';
 
-/**
- * @typedef {Object} ImportSVGOptions
- * @property {import('./units.js').Unit} units
- */
+export interface ImportSVGOptions {
+    units: Unit;
+}
 
-/**
- * Parse SVG string into Geometry.
- * @param {string} svgString
- * @param {ImportSVGOptions} options
- * @returns {import('./Geometry.js').Geometry}
- */
-export const geometryFromSVGString = (svgString, options) => {
+/** Parse SVG string into Geometry. */
+export const geometryFromSVGString = (svgString: string, options: ImportSVGOptions): Geometry => {
     const domparser = new DOMParser();
     const doc = domparser.parseFromString(svgString, 'image/svg+xml');
     const svgNode = doc.querySelector('svg');
@@ -34,7 +29,7 @@ export const geometryFromSVGString = (svgString, options) => {
     return new Group();
 };
 
-const tagNamesWithDefaultPaint = {
+const tagNamesWithDefaultPaint: Record<string, boolean> = {
     path: true,
     polygon: true,
     polyline: true,
@@ -44,13 +39,8 @@ const tagNamesWithDefaultPaint = {
     text: true
 };
 
-/**
- * Mutate anchors to form a circular arc between them.
- * @param {Anchor} anchor1
- * @param {Anchor} anchor2
- * @param {boolean} horizontal
- */
-const makeCircularArc = (anchor1, anchor2, horizontal) => {
+/** Mutate anchors to form a circular arc between them. */
+const makeCircularArc = (anchor1: Anchor, anchor2: Anchor, horizontal: boolean): void => {
     const c = 0.551915024494;
     const x1 = anchor1.position.x;
     const y1 = anchor1.position.y;
@@ -65,10 +55,10 @@ const makeCircularArc = (anchor1, anchor2, horizontal) => {
     }
 };
 
-const parseStyleMap = (svgNode) => {
+const parseStyleMap = (svgNode: SVGElement): Record<string, string> => {
     const styleAttr = svgNode.getAttribute('style');
     if (!styleAttr) return {};
-    const map = {};
+    const map: Record<string, string> = {};
     styleAttr.split(';').forEach((entry) => {
         const [key, value] = entry.split(':');
         if (!key || !value) return;
@@ -77,40 +67,53 @@ const parseStyleMap = (svgNode) => {
     return map;
 };
 
-const getStringAttribute = (svgNode, name, defaultValue, styleMap = {}) => {
+// Generic: return type matches whatever defaultValue's type is (T),
+// so callers get `string | undefined`, `string | null`, or plain `string`
+// depending on what they pass in — one function, three call shapes.
+const getStringAttribute = <T>(
+    svgNode: SVGElement,
+    name: string,
+    defaultValue: T,
+    styleMap: Record<string, string> = {}
+): string | T => {
     if (svgNode.hasAttribute(name)) {
-        return svgNode.getAttribute(name);
+        return svgNode.getAttribute(name) as string;
     }
     if (styleMap[name] !== undefined) {
         return styleMap[name];
     }
-    if (svgNode.style && svgNode.style[name]) {
-        return svgNode.style[name];
+    if (svgNode.style && (svgNode.style as any)[name]) {
+        return (svgNode.style as any)[name];
     }
     return defaultValue;
 };
 
-const getNumberAttribute = (svgNode, name, defaultValue, styleMap = {}) => {
+const getNumberAttribute = <T>(
+    svgNode: SVGElement,
+    name: string,
+    defaultValue: T,
+    styleMap: Record<string, string> = {}
+): number | T => {
     if (svgNode.hasAttribute(name)) {
-        return parseFloat(svgNode.getAttribute(name));
+        return parseFloat(svgNode.getAttribute(name) as string);
     }
     if (styleMap[name] !== undefined) {
         return parseFloat(styleMap[name]);
     }
-    if (svgNode.style && svgNode.style[name]) {
-        return parseFloat(svgNode.style[name]);
+    if (svgNode.style && (svgNode.style as any)[name]) {
+        return parseFloat((svgNode.style as any)[name]);
     }
     return defaultValue;
 };
 
-const getNumberAndUnitFromString = (s) => {
+const getNumberAndUnitFromString = (s: string): { number: number | undefined; unit: string | undefined } => {
     const numberString = s.match(/[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?/)?.[0];
     const number = numberString ? parseFloat(numberString) : undefined;
     const unit = s.match(/[^\d.]+$/)?.[0];
     return { number, unit };
 };
 
-const transformGeometryForViewbox = (geometry, svgNode, options) => {
+const transformGeometryForViewbox = (geometry: Geometry, svgNode: SVGElement, options: ImportSVGOptions): void => {
     const viewboxAttribute = getStringAttribute(svgNode, 'viewBox', undefined);
     if (viewboxAttribute !== undefined) {
         const viewboxNumbers = viewboxAttribute.split(/[\s,]+/).map((s) => parseFloat(s));
@@ -134,13 +137,11 @@ const transformGeometryForViewbox = (geometry, svgNode, options) => {
     }
 };
 
-/**
- * Convert an SVG node into Geometry.
- * @param {SVGElement} svgNode
- * @param {ImportSVGOptions} options
- * @returns {import('./Geometry.js').Geometry|undefined}
- */
-export const geometryFromSVGNode = (svgNode, options) => {
+/** Convert an SVG node into Geometry. */
+export const geometryFromSVGNode = (
+    svgNode: SVGElement,
+    options: ImportSVGOptions
+): Group | Shape | Path | undefined => {
     const styleMap = parseStyleMap(svgNode);
 
     const display = getStringAttribute(svgNode, 'display', undefined, styleMap);
@@ -148,11 +149,11 @@ export const geometryFromSVGNode = (svgNode, options) => {
     const visibility = getStringAttribute(svgNode, 'visibility', undefined, styleMap);
     if (visibility === 'hidden') return undefined;
 
-    let result;
+    let result: Group | Shape | Path | undefined;
     const tagName = svgNode.tagName;
     if (tagName === 'svg' || tagName === 'g') {
-        const items = [];
-        for (let childNode of Array.from(svgNode.children)) {
+        const items: Geometry[] = [];
+        for (let childNode of Array.from(svgNode.children) as SVGElement[]) {
             const childGeometry = geometryFromSVGNode(childNode, options);
             if (childGeometry) items.push(childGeometry);
         }
@@ -291,23 +292,20 @@ export const geometryFromSVGNode = (svgNode, options) => {
     const opacity = getNumberAttribute(svgNode, 'opacity', 1, styleMap);
     const fillOpacity = getNumberAttribute(svgNode, 'fill-opacity', 1, styleMap);
     const strokeOpacity = getNumberAttribute(svgNode, 'stroke-opacity', 1, styleMap);
-    if (result.fill) {
+    // Group has no fill/stroke field, so we narrow to Path | Shape first —
+    // functionally identical to the original (Group.fill was always undefined anyway).
+    if ((result instanceof Path || result instanceof Shape) && result.fill) {
         result.fill.color.a *= opacity * fillOpacity;
     }
-    if (result.stroke) {
+    if ((result instanceof Path || result instanceof Shape) && result.stroke) {
         result.stroke.color.a *= opacity * strokeOpacity;
     }
 
     return result;
 };
 
-/**
- * Convert a path or shape to an SVG path element string.
- * @param {Path|Shape} item
- * @param {import('./Geometry.js').ExportOptions} [options]
- * @returns {string}
- */
-export const pathOrShapeToSVGString = (item, options) => {
+/** Convert a path or shape to an SVG path element string. */
+export const pathOrShapeToSVGString = (item: Path | Shape, options?: ExportOptions): string => {
     let stroke = item.stroke;
     let fill = item.fill;
     if (!stroke && !fill) {
@@ -383,7 +381,7 @@ export const pathOrShapeToSVGString = (item, options) => {
 };
 
 // via https://gist.github.com/victor-homyakov/bcb7d7911e4a388b1c810f8c3ce17bcf
-const hashString = (str) => {
+const hashString = (str: string): number => {
     let hash = 5381;
     const len = str.length;
     for (let i = 0; i < len; i++) {

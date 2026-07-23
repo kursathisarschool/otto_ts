@@ -15,17 +15,17 @@ import { Vec } from '../Vec.js';
 let testCount = 0;
 let passCount = 0;
 
-const test = (name, passed) => {
+const test = (name: string, passed: boolean) => {
     testCount++;
     if (passed) {
         passCount++;
-        console.log(`  \u2713 ${name}`);
+        console.log(`  ✓ ${name}`);
     } else {
-        console.log(`  \u2717 ${name}`);
+        console.log(`  ✗ ${name}`);
     }
 };
 
-const approx = (a, b, tolerance = 0.001) => Math.abs(a - b) < tolerance;
+const approx = (a: number, b: number, tolerance: number = 0.001) => Math.abs(a - b) < tolerance;
 
 console.log('Group.js tests:\n');
 
@@ -49,9 +49,9 @@ test('constructor with items', (() => {
 test('clone() creates independent copy', (() => {
     const g1 = new Group([Path.rect(0, 0, 50, 50)]);
     const g2 = g1.clone();
-    g2.items[0].anchors[0].position.x = 100;
-    return g1.items[0].anchors[0].position.x === 0 &&
-           g2.items[0].anchors[0].position.x === 100;
+    (g2.items[0] as Path).anchors[0].position.x = 100;
+    return (g1.items[0] as Path).anchors[0].position.x === 0 &&
+           (g2.items[0] as Path).anchors[0].position.x === 100;
 })());
 
 // =============================================================================
@@ -87,8 +87,8 @@ test('affineTransform() transforms all items', (() => {
     ]);
     const m = AffineMatrix.fromTranslation(new Vec(100, 100));
     g.affineTransform(m);
-    return g.items[0].anchors[0].position.x === 100 &&
-           g.items[1].anchors[0].position.x === 110;
+    return (g.items[0] as Path).anchors[0].position.x === 100 &&
+           (g.items[1] as Path).anchors[0].position.x === 110;
 })());
 
 test('affineTransform() returns this', (() => {
@@ -146,7 +146,7 @@ console.log('\n  Style Methods:');
 test('assignFill() applies to all items', (() => {
     const g = new Group([Path.rect(0, 0, 50, 50), Path.rect(60, 0, 50, 50)]);
     g.assignFill(new Fill(new Color(1, 0, 0)));
-    return g.items[0].fill.color.r === 1 && g.items[1].fill.color.r === 1;
+    return (g.items[0] as Path).fill!.color.r === 1 && (g.items[1] as Path).fill!.color.r === 1;
 })());
 
 test('removeFill() removes from all items', (() => {
@@ -155,13 +155,13 @@ test('removeFill() removes from all items', (() => {
         new Path([], false, undefined, new Fill()),
     ]);
     g.removeFill();
-    return g.items[0].fill === undefined && g.items[1].fill === undefined;
+    return (g.items[0] as Path).fill === undefined && (g.items[1] as Path).fill === undefined;
 })());
 
 test('assignStroke() applies to all items', (() => {
     const g = new Group([Path.rect(0, 0, 50, 50), Path.rect(60, 0, 50, 50)]);
     g.assignStroke(new Stroke(new Color(), false, 5));
-    return g.items[0].stroke.width === 5 && g.items[1].stroke.width === 5;
+    return (g.items[0] as Path).stroke!.width === 5 && (g.items[1] as Path).stroke!.width === 5;
 })());
 
 test('scaleStroke() scales all item strokes', (() => {
@@ -171,7 +171,7 @@ test('scaleStroke() scales all item strokes', (() => {
     p2.assignStroke(new Stroke(new Color(), false, 4));
     const g = new Group([p1, p2]);
     g.scaleStroke(2);
-    return g.items[0].stroke.width === 4 && g.items[1].stroke.width === 8;
+    return (g.items[0] as Path).stroke!.width === 4 && (g.items[1] as Path).stroke!.width === 8;
 })());
 
 // =============================================================================
@@ -206,7 +206,7 @@ test('looseBoundingBox() returns combined bounds', (() => {
         Path.fromPoints([new Vec(0, 0), new Vec(50, 0)]),
         Path.fromPoints([new Vec(100, 100), new Vec(150, 100)]),
     ]);
-    const box = g.looseBoundingBox();
+    const box = g.looseBoundingBox()!;
     return box.min.x === 0 && box.min.y === 0 &&
            box.max.x === 150 && box.max.y === 100;
 })());
@@ -218,7 +218,7 @@ test('looseBoundingBox() returns undefined for empty group', (() => {
 
 test('tightBoundingBox() returns combined tight bounds', (() => {
     const g = new Group([Path.rect(10, 20, 30, 40)]);
-    const box = g.tightBoundingBox();
+    const box = g.tightBoundingBox()!;
     return box.min.x === 10 && box.min.y === 20 &&
            box.max.x === 40 && box.max.y === 60;
 })());
@@ -253,7 +253,7 @@ test('closestPointWithinDistanceToPoint() finds closest across items', (() => {
         Path.fromPoints([new Vec(0, 50), new Vec(100, 50)]),
     ]);
     const result = g.closestPointWithinDistanceToPoint(100, new Vec(50, 10));
-    return result.distance < 15 && result.position.y === 0;
+    return result.distance < 15 && result.position!.y === 0;
 })());
 
 test('closestPointWithinDistanceToPoint() returns Infinity for empty group', (() => {
@@ -274,8 +274,8 @@ test('reverse() reverses all items and item order', (() => {
         Path.fromPoints([new Vec(0, 50), new Vec(100, 50)]),
     ]);
     g.reverse();
-    return g.items[0].anchors[0].position.y === 50 &&
-           g.items[0].anchors[0].position.x === 100;
+    return (g.items[0] as Path).anchors[0].position.y === 50 &&
+           (g.items[0] as Path).anchors[0].position.x === 100;
 })());
 
 test('reverse() returns this', (() => {
@@ -295,7 +295,7 @@ test('byJoiningPaths() joins paths at endpoints', (() => {
         Path.fromPoints([new Vec(50, 0), new Vec(100, 0)]),
     ];
     const g = Group.byJoiningPaths(paths, 1);
-    return g.items.length === 1 && g.items[0].anchors.length === 3;
+    return g.items.length === 1 && (g.items[0] as Path).anchors.length === 3;
 })());
 
 test('byJoiningPaths() does not join distant paths', (() => {
@@ -314,7 +314,7 @@ test('byJoiningPaths() closes paths with matching endpoints', (() => {
         Path.fromPoints([new Vec(100, 100), new Vec(0, 0)]),
     ];
     const g = Group.byJoiningPaths(paths, 1);
-    return g.items.length === 1 && g.items[0].closed === true;
+    return g.items.length === 1 && (g.items[0] as Path).closed === true;
 })());
 
 test('byJoiningPaths() preserves closed paths', (() => {
@@ -323,7 +323,7 @@ test('byJoiningPaths() preserves closed paths', (() => {
         Path.fromPoints([new Vec(100, 0), new Vec(150, 0)]),
     ];
     const g = Group.byJoiningPaths(paths, 1);
-    return g.items[0].closed === true;
+    return (g.items[0] as Path).closed === true;
 })());
 
 // =============================================================================

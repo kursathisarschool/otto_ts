@@ -10,26 +10,31 @@ import { Vec } from '../Vec.js';
 import {
     cubicFromSegment,
     isSegmentLinear,
+    Line,
     lineFromSegment,
     positionAndTimeAtClosestPointOnCubic,
     positionAndTimeAtClosestPointOnLine,
     segmentLength,
 } from '../Segment.js';
+import { Cubic } from '../bezier.js';
 
 /**
  * Edge represents one path segment between two anchors.
  */
+interface EdgeOptions {
+    index?: number;
+    pathIndex?: number;
+    closed?: boolean;
+}
+
 export class Edge {
-    /**
-     * Create an edge.
-     * @param {Anchor} anchor1
-     * @param {Anchor} anchor2
-     * @param {Object} [options]
-     * @param {number} [options.index=0] - Segment index within the path
-     * @param {number} [options.pathIndex=0] - Path index within a multi-path shape
-     * @param {boolean} [options.closed=false] - Whether the parent path is closed
-     */
-    constructor(anchor1, anchor2, options = {}) {
+    anchor1: Anchor;
+    anchor2: Anchor;
+    index: number;
+    pathIndex: number;
+    closed: boolean;
+
+    constructor(anchor1: Anchor, anchor2: Anchor, options: EdgeOptions = {}) {
         this.anchor1 = anchor1;
         this.anchor2 = anchor2;
         this.index = options.index ?? 0;
@@ -41,7 +46,7 @@ export class Edge {
      * Check if this edge is valid.
      * @returns {boolean}
      */
-    isValid() {
+    isValid(): boolean {
         return Anchor.isValid(this.anchor1) && Anchor.isValid(this.anchor2);
     }
 
@@ -49,7 +54,7 @@ export class Edge {
      * Get the underlying segment anchors.
      * @returns {[Anchor, Anchor]}
      */
-    segment() {
+    segment(): [Anchor,Anchor] {
         return [this.anchor1, this.anchor2];
     }
 
@@ -57,7 +62,7 @@ export class Edge {
      * Check if this edge is a straight line.
      * @returns {boolean}
      */
-    isLinear() {
+    isLinear(): boolean {
         return isSegmentLinear(this.segment());
     }
 
@@ -65,7 +70,7 @@ export class Edge {
      * Get edge length.
      * @returns {number}
      */
-    length() {
+    length(): number {
         return segmentLength(this.segment());
     }
 
@@ -73,7 +78,7 @@ export class Edge {
      * Get line representation.
      * @returns {import('../Segment.js').Line}
      */
-    toLine() {
+    toLine(): Line {
         return lineFromSegment(this.segment());
     }
 
@@ -81,7 +86,7 @@ export class Edge {
      * Get cubic representation.
      * @returns {import('../Segment.js').Cubic}
      */
-    toCubic() {
+    toCubic(): Cubic {
         return cubicFromSegment(this.segment());
     }
 
@@ -89,7 +94,7 @@ export class Edge {
      * Convert edge to a standalone Path for rendering.
      * @returns {Path}
      */
-    toPath() {
+    toPath(): Path {
         return new Path([this.anchor1.clone(), this.anchor2.clone()]);
     }
 
@@ -98,11 +103,11 @@ export class Edge {
      * @param {Vec|{x:number,y:number}} point
      * @returns {{position: Vec, time: number, distance: number}}
      */
-    closestPoint(point) {
+    closestPoint(point: Vec | { x: number; y: number }): { position: Vec; time: number; distance: number } {
         const p = Vec.isValid(point) ? point : new Vec(point.x, point.y);
         const segment = this.segment();
 
-        let result;
+        let result: { position: Vec; time: number } ;
         if (this.isLinear()) {
             result = positionAndTimeAtClosestPointOnLine(p, lineFromSegment(segment));
         } else {

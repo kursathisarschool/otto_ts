@@ -8,7 +8,7 @@ import { Edge } from './Edge.js';
 import { Group } from '../Group.js';
 import { Path } from '../Path.js';
 import { Shape } from '../Shape.js';
-
+import { Vec } from '../Vec.js';
 /**
  * Build edges from a Path.
  * @param {Path} path
@@ -16,10 +16,25 @@ import { Shape } from '../Shape.js';
  * @param {number} [options.pathIndex=0]
  * @returns {Edge[]}
  */
-export const edgesFromPath = (path, options = {}) => {
+
+interface EdgesFromPathOptions {
+    pathIndex?: number
+}
+interface closestEdgeToOptions {
+    maxDistance?: number;
+}
+interface ClosestEdgeResult {
+    edge: Edge;
+    position: Vec;
+    time: number;
+    distance: number;
+}
+
+
+export const edgesFromPath = (path: Path, options: EdgesFromPathOptions = {}): Edge[] => {
     if (!path || !Array.isArray(path.anchors)) return [];
     const pathIndex = options.pathIndex ?? 0;
-    const edges = [];
+    const edges: Edge[] = [];
 
     if (path.anchors.length < 2) return edges;
 
@@ -47,9 +62,9 @@ export const edgesFromPath = (path, options = {}) => {
  * @param {Path[]} paths
  * @returns {Edge[]}
  */
-export const edgesFromPaths = (paths) => {
+export const edgesFromPaths = (paths: Path[]): Edge[] => {
     if (!Array.isArray(paths)) return [];
-    const edges = [];
+    const edges: Edge[] = [];
     paths.forEach((path, pathIndex) => {
         edges.push(...edgesFromPath(path, { pathIndex }));
     });
@@ -61,7 +76,7 @@ export const edgesFromPaths = (paths) => {
  * @param {Path|Shape|Group} item
  * @returns {Edge[]}
  */
-export const edgesFromItem = (item) => {
+export const edgesFromItem = (item: Path | Shape | Group): Edge[] => {
     if (!item) return [];
     if (item instanceof Path) return edgesFromPath(item, { pathIndex: 0 });
     if (item instanceof Shape || item instanceof Group) return edgesFromPaths(item.allPaths());
@@ -76,10 +91,10 @@ export const edgesFromItem = (item) => {
  * @param {number} [options.maxDistance=Infinity]
  * @returns {{edge: Edge, position: import('../Vec.js').Vec, time: number, distance: number}|null}
  */
-export const closestEdgeToPoint = (item, point, options = {}) => {
+export const closestEdgeToPoint = (item: Path|Shape|Group, point: Vec|{x:number,y:number}, options: closestEdgeToOptions = {}): ClosestEdgeResult | null => {
     const maxDistance = options.maxDistance ?? Infinity;
     const edges = edgesFromItem(item);
-    let closest = null;
+    let closest: ClosestEdgeResult | null  = null;
 
     edges.forEach((edge) => {
         const hit = edge.closestPoint(point);

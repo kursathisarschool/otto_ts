@@ -18,7 +18,7 @@ import {
 let testCount = 0;
 let passCount = 0;
 
-function test(name, condition) {
+function test(name: string, condition: boolean) {
     testCount++;
     if (condition) {
         passCount++;

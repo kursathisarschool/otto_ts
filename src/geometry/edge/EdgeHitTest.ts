@@ -9,28 +9,30 @@ import { BoundingBox } from '../BoundingBox.js';
 import { Vec } from '../Vec.js';
 import { Edge } from './Edge.js';
 import { edgesFromItem } from './edgeHelpers.js';
+import type { Path } from '../Path.js';
+import type { Shape } from '../Shape.js';
+import type { Group } from '../Group.js';
 
-/**
- * @typedef {Object} EdgeHitResult
- * @property {Edge} edge - The edge that was hit
- * @property {Vec} position - Closest point on edge
- * @property {number} time - Parameter (0-1) along edge
- * @property {number} distance - Distance from test point to edge
- */
+export interface EdgeHitResult {
+    /** The edge that was hit */
+    edge: Edge;
+    /** Closest point on edge */
+    position: Vec;
+    /** Parameter (0-1) along edge */
+    time: number;
+    /** Distance from test point to edge */
+    distance: number;
+}
 
-/**
- * Default hit distance in pixels.
- */
+/** Default hit distance in pixels. */
 export const DEFAULT_HIT_DISTANCE = 6;
 
-/**
- * Test if a point hits an edge within tolerance.
- * @param {Edge} edge
- * @param {Vec|{x:number,y:number}} point
- * @param {number} [tolerance=DEFAULT_HIT_DISTANCE]
- * @returns {EdgeHitResult|null}
- */
-export const hitTestEdge = (edge, point, tolerance = DEFAULT_HIT_DISTANCE) => {
+/** Test if a point hits an edge within tolerance. */
+export const hitTestEdge = (
+    edge: Edge,
+    point: Vec | { x: number; y: number },
+    tolerance: number = DEFAULT_HIT_DISTANCE
+): EdgeHitResult | null => {
     const result = edge.closestPoint(point);
     if (result.distance <= tolerance) {
         return {
@@ -43,17 +45,18 @@ export const hitTestEdge = (edge, point, tolerance = DEFAULT_HIT_DISTANCE) => {
     return null;
 };
 
-/**
- * Find the closest edge to a point from an array of edges.
- * @param {Edge[]} edges
- * @param {Vec|{x:number,y:number}} point
- * @param {Object} [options]
- * @param {number} [options.maxDistance=DEFAULT_HIT_DISTANCE]
- * @returns {EdgeHitResult|null}
- */
-export const hitTestEdges = (edges, point, options = {}) => {
+interface HitTestEdgesOptions {
+    maxDistance?: number;
+}
+
+/** Find the closest edge to a point from an array of edges. */
+export const hitTestEdges = (
+    edges: Edge[],
+    point: Vec | { x: number; y: number },
+    options: HitTestEdgesOptions = {}
+): EdgeHitResult | null => {
     const maxDistance = options.maxDistance ?? DEFAULT_HIT_DISTANCE;
-    let closest = null;
+    let closest: EdgeHitResult | null = null;
 
     for (const edge of edges) {
         const result = edge.closestPoint(point);
@@ -71,15 +74,13 @@ export const hitTestEdges = (edges, point, options = {}) => {
     return closest;
 };
 
-/**
- * Find all edges within tolerance of a point.
- * @param {Edge[]} edges
- * @param {Vec|{x:number,y:number}} point
- * @param {number} [tolerance=DEFAULT_HIT_DISTANCE]
- * @returns {EdgeHitResult[]}
- */
-export const hitTestEdgesAll = (edges, point, tolerance = DEFAULT_HIT_DISTANCE) => {
-    const results = [];
+/** Find all edges within tolerance of a point. */
+export const hitTestEdgesAll = (
+    edges: Edge[],
+    point: Vec | { x: number; y: number },
+    tolerance: number = DEFAULT_HIT_DISTANCE
+): EdgeHitResult[] => {
+    const results: EdgeHitResult[] = [];
     for (const edge of edges) {
         const result = edge.closestPoint(point);
         if (result.distance <= tolerance) {
@@ -94,39 +95,35 @@ export const hitTestEdgesAll = (edges, point, tolerance = DEFAULT_HIT_DISTANCE) 
     return results.sort((a, b) => a.distance - b.distance);
 };
 
-/**
- * Test if a point hits any edge of a geometry item.
- * @param {import('../Path.js').Path|import('../Shape.js').Shape|import('../Group.js').Group} item
- * @param {Vec|{x:number,y:number}} point
- * @param {Object} [options]
- * @param {number} [options.maxDistance=DEFAULT_HIT_DISTANCE]
- * @returns {EdgeHitResult|null}
- */
-export const hitTestItemEdges = (item, point, options = {}) => {
+type GeometryItem = Path | Shape | Group;
+
+interface HitTestItemEdgesOptions {
+    maxDistance?: number;
+}
+
+/** Test if a point hits any edge of a geometry item. */
+export const hitTestItemEdges = (
+    item: GeometryItem,
+    point: Vec | { x: number; y: number },
+    options: HitTestItemEdgesOptions = {}
+): EdgeHitResult | null => {
     const edges = edgesFromItem(item);
     return hitTestEdges(edges, point, options);
 };
 
-/**
- * Find all edges of an item within tolerance of a point.
- * @param {import('../Path.js').Path|import('../Shape.js').Shape|import('../Group.js').Group} item
- * @param {Vec|{x:number,y:number}} point
- * @param {number} [tolerance=DEFAULT_HIT_DISTANCE]
- * @returns {EdgeHitResult[]}
- */
-export const hitTestItemEdgesAll = (item, point, tolerance = DEFAULT_HIT_DISTANCE) => {
+/** Find all edges of an item within tolerance of a point. */
+export const hitTestItemEdgesAll = (
+    item: GeometryItem,
+    point: Vec | { x: number; y: number },
+    tolerance: number = DEFAULT_HIT_DISTANCE
+): EdgeHitResult[] => {
     const edges = edgesFromItem(item);
     return hitTestEdgesAll(edges, point, tolerance);
 };
 
-/**
- * Find edges that intersect a rectangular region.
- * @param {Edge[]} edges
- * @param {BoundingBox} box
- * @returns {Edge[]}
- */
-export const edgesIntersectingBox = (edges, box) => {
-    const results = [];
+/** Find edges that intersect a rectangular region. */
+export const edgesIntersectingBox = (edges: Edge[], box: BoundingBox): Edge[] => {
+    const results: Edge[] = [];
     for (const edge of edges) {
         const edgePath = edge.toPath();
         const edgeBox = edgePath.looseBoundingBox();
@@ -137,14 +134,9 @@ export const edgesIntersectingBox = (edges, box) => {
     return results;
 };
 
-/**
- * Find edges fully contained within a rectangular region.
- * @param {Edge[]} edges
- * @param {BoundingBox} box
- * @returns {Edge[]}
- */
-export const edgesContainedInBox = (edges, box) => {
-    const results = [];
+/** Find edges fully contained within a rectangular region. */
+export const edgesContainedInBox = (edges: Edge[], box: BoundingBox): Edge[] => {
+    const results: Edge[] = [];
     for (const edge of edges) {
         const p1 = edge.anchor1.position;
         const p2 = edge.anchor2.position;
@@ -163,52 +155,44 @@ export const edgesContainedInBox = (edges, box) => {
     return results;
 };
 
-/**
- * EdgeHitTester provides stateful hit testing with caching.
- */
+interface EdgeHitTesterOptions {
+    tolerance?: number;
+}
+
+interface TestBoxOptions {
+    fullyContained?: boolean;
+}
+
+/** EdgeHitTester provides stateful hit testing with caching. */
 export class EdgeHitTester {
-    /**
-     * Create a hit tester.
-     * @param {Object} [options]
-     * @param {number} [options.tolerance=DEFAULT_HIT_DISTANCE]
-     */
-    constructor(options = {}) {
+    tolerance: number;
+    _edges: Edge[];
+    _bounds: BoundingBox | null;
+
+    constructor(options: EdgeHitTesterOptions = {}) {
         this.tolerance = options.tolerance ?? DEFAULT_HIT_DISTANCE;
-        /** @type {Edge[]} */
         this._edges = [];
-        /** @type {BoundingBox|null} */
         this._bounds = null;
     }
 
-    /**
-     * Set edges to test against.
-     * @param {Edge[]} edges
-     * @returns {EdgeHitTester} this
-     */
-    setEdges(edges) {
+    /** Set edges to test against. */
+    setEdges(edges: Edge[]): EdgeHitTester {
         this._edges = edges;
         this._bounds = null;
         return this;
     }
 
-    /**
-     * Set edges from a geometry item.
-     * @param {import('../Path.js').Path|import('../Shape.js').Shape|import('../Group.js').Group} item
-     * @returns {EdgeHitTester} this
-     */
-    setItem(item) {
+    /** Set edges from a geometry item. */
+    setItem(item: GeometryItem): EdgeHitTester {
         this._edges = edgesFromItem(item);
         this._bounds = null;
         return this;
     }
 
-    /**
-     * Get cached bounds of all edges.
-     * @returns {BoundingBox|null}
-     */
-    getBounds() {
+    /** Get cached bounds of all edges. */
+    getBounds(): BoundingBox | null {
         if (!this._bounds && this._edges.length > 0) {
-            const allPoints = [];
+            const allPoints: Vec[] = [];
             for (const edge of this._edges) {
                 allPoints.push(edge.anchor1.position);
                 allPoints.push(edge.anchor2.position);
@@ -218,12 +202,8 @@ export class EdgeHitTester {
         return this._bounds;
     }
 
-    /**
-     * Test a point against all edges.
-     * @param {Vec|{x:number,y:number}} point
-     * @returns {EdgeHitResult|null}
-     */
-    test(point) {
+    /** Test a point against all edges. */
+    test(point: Vec | { x: number; y: number }): EdgeHitResult | null {
         // Quick bounds check
         const bounds = this.getBounds();
         if (bounds) {
@@ -236,12 +216,8 @@ export class EdgeHitTester {
         return hitTestEdges(this._edges, point, { maxDistance: this.tolerance });
     }
 
-    /**
-     * Find all hits at a point.
-     * @param {Vec|{x:number,y:number}} point
-     * @returns {EdgeHitResult[]}
-     */
-    testAll(point) {
+    /** Find all hits at a point. */
+    testAll(point: Vec | { x: number; y: number }): EdgeHitResult[] {
         const bounds = this.getBounds();
         if (bounds) {
             const expandedBounds = bounds.clone().expandScalar(this.tolerance);
@@ -253,14 +229,8 @@ export class EdgeHitTester {
         return hitTestEdgesAll(this._edges, point, this.tolerance);
     }
 
-    /**
-     * Find edges in a box region.
-     * @param {BoundingBox} box
-     * @param {Object} [options]
-     * @param {boolean} [options.fullyContained=false]
-     * @returns {Edge[]}
-     */
-    testBox(box, options = {}) {
+    /** Find edges in a box region. */
+    testBox(box: BoundingBox, options: TestBoxOptions = {}): Edge[] {
         if (options.fullyContained) {
             return edgesContainedInBox(this._edges, box);
         }

@@ -4,70 +4,52 @@
  * Geometry container for grouping multiple geometry items.
  */
 
+import { Anchor } from './Anchor.js';
 import { BoundingBox } from './BoundingBox.js';
 import { DEFAULT_TOLERANCE } from './constants.js';
-import { Geometry } from './Geometry.js';
+import { Geometry, type ClosestPointResult, type ExportOptions } from './Geometry.js';
 import { Path } from './Path.js';
 import { Shape } from './Shape.js';
 import { Fill, Stroke } from './Style.js';
 import { Vec } from './Vec.js';
+import type { AffineMatrix } from './Matrix.js';
 
 /**
  * Group class for containing multiple geometry items.
  *
  * @example
- * // Create a group of shapes
  * const rect = Path.rect(0, 0, 100, 50);
  * const circle = Path.circle(new Vec(50, 25), 20);
  * const group = new Group([rect, circle]);
- *
- * @extends Geometry
  */
 export class Group extends Geometry {
     static displayName = 'Group';
 
-    /**
-     * Create a group.
-     * @param {Geometry[]} [items=[]] - Array of geometry items
-     */
-    constructor(items = []) {
+    items: Geometry[];
+
+    constructor(items: Geometry[] = []) {
         super();
-        /** @type {Geometry[]} */
         this.items = items;
     }
 
-    /**
-     * Create a copy of this group.
-     * @returns {Group}
-     */
-    clone() {
+    /** Create a copy of this group. */
+    clone(): Group {
         return new Group(this.items.map((item) => item.clone()));
     }
 
-    /**
-     * Check if this group is valid.
-     * @returns {boolean}
-     */
-    isValid() {
+    /** Check if this group is valid. */
+    isValid(): boolean {
         return Array.isArray(this.items) && this.items.every(Geometry.isValid);
     }
 
-    /**
-     * Apply an affine transformation.
-     * @param {import('./Matrix.js').AffineMatrix} affineMatrix
-     * @returns {Group} this
-     */
-    affineTransform(affineMatrix) {
+    /** Apply an affine transformation. */
+    affineTransform(affineMatrix: AffineMatrix): Group {
         for (let item of this.items) item.affineTransform(affineMatrix);
         return this;
     }
 
-    /**
-     * Apply an affine transformation without translation.
-     * @param {import('./Matrix.js').AffineMatrix} affineMatrix
-     * @returns {Group} this
-     */
-    affineTransformWithoutTranslation(affineMatrix) {
+    /** Apply an affine transformation without translation. */
+    affineTransformWithoutTranslation(affineMatrix: AffineMatrix): Group {
         for (let item of this.items) item.affineTransformWithoutTranslation(affineMatrix);
         return this;
     }
@@ -76,51 +58,27 @@ export class Group extends Geometry {
     // Collection methods
     // =========================================================================
 
-    /**
-     * Get all shapes.
-     * @returns {Shape[]}
-     */
-    allShapes() {
-        return this.items.flatMap((item) => item.allShapes());
+    allShapes(): Shape[] {
+        return this.items.flatMap((item) => item.allShapes()) as Shape[];
     }
 
-    /**
-     * Get all paths.
-     * @returns {Path[]}
-     */
-    allPaths() {
-        return this.items.flatMap((item) => item.allPaths());
+    allPaths(): Path[] {
+        return this.items.flatMap((item) => item.allPaths()) as Path[];
     }
 
-    /**
-     * Get all anchors.
-     * @returns {import('./Anchor.js').Anchor[]}
-     */
-    allAnchors() {
-        return this.items.flatMap((item) => item.allAnchors());
+    allAnchors(): Anchor[] {
+        return this.items.flatMap((item) => item.allAnchors()) as Anchor[];
     }
 
-    /**
-     * Get all orphaned anchors.
-     * @returns {import('./Anchor.js').Anchor[]}
-     */
-    allOrphanedAnchors() {
-        return this.items.flatMap((item) => item.allOrphanedAnchors());
+    allOrphanedAnchors(): Anchor[] {
+        return this.items.flatMap((item) => item.allOrphanedAnchors()) as Anchor[];
     }
 
-    /**
-     * Get all shapes and orphaned paths.
-     * @returns {(Shape|Path)[]}
-     */
-    allShapesAndOrphanedPaths() {
-        return this.items.flatMap((item) => item.allShapesAndOrphanedPaths());
+    allShapesAndOrphanedPaths(): (Shape | Path)[] {
+        return this.items.flatMap((item) => item.allShapesAndOrphanedPaths()) as (Shape | Path)[];
     }
 
-    /**
-     * Get all intersectable geometry.
-     * @returns {Geometry[]}
-     */
-    allIntersectables() {
+    allIntersectables(): Geometry[] {
         return this.items.flatMap((item) => item.allIntersectables());
     }
 
@@ -128,71 +86,37 @@ export class Group extends Geometry {
     // Style methods
     // =========================================================================
 
-    /**
-     * Assign a fill style to all items.
-     * @param {Fill} fill
-     * @returns {Group} this
-     */
-    assignFill(fill) {
+    assignFill(fill: Fill): Group {
         for (let item of this.items) item.assignFill(fill);
         return this;
     }
 
-    /**
-     * Remove fill style from all items.
-     * @returns {Group} this
-     */
-    removeFill() {
+    removeFill(): Group {
         for (let item of this.items) item.removeFill();
         return this;
     }
 
-    /**
-     * Assign a stroke style to all items.
-     * @param {Stroke} stroke
-     * @returns {Group} this
-     */
-    assignStroke(stroke) {
+    assignStroke(stroke: Stroke): Group {
         for (let item of this.items) item.assignStroke(stroke);
         return this;
     }
 
-    /**
-     * Remove stroke style from all items.
-     * @returns {Group} this
-     */
-    removeStroke() {
+    removeStroke(): Group {
         for (let item of this.items) item.removeStroke();
         return this;
     }
 
-    /**
-     * Assign both fill and stroke to all items.
-     * @param {Fill} fill
-     * @param {Stroke} stroke
-     * @returns {Group} this
-     */
-    assignStyle(fill, stroke) {
+    assignStyle(fill: Fill, stroke: Stroke): Group {
         for (let item of this.items) item.assignStyle(fill, stroke);
         return this;
     }
 
-    /**
-     * Copy style from another geometry to all items.
-     * @param {Geometry} itemToCopy
-     * @returns {Group} this
-     */
-    copyStyle(itemToCopy) {
+    copyStyle(itemToCopy: Geometry): Group {
         for (let item of this.items) item.copyStyle(itemToCopy);
         return this;
     }
 
-    /**
-     * Scale stroke width on all items.
-     * @param {number} scaleFactor
-     * @returns {Group} this
-     */
-    scaleStroke(scaleFactor) {
+    scaleStroke(scaleFactor: number): Group {
         for (let item of this.items) item.scaleStroke(scaleFactor);
         return this;
     }
@@ -201,22 +125,12 @@ export class Group extends Geometry {
     // SVG
     // =========================================================================
 
-    /**
-     * Convert to SVG group string.
-     * @param {Object} [options]
-     * @returns {string}
-     */
-    toSVGString(options) {
+    toSVGString(options?: ExportOptions): string {
         const childrenString = this.items.map((item) => item.toSVGString?.(options) || '').join('\n');
         return `<g>\n${indentString(childrenString)}\n</g>`;
     }
 
-    /**
-     * Convert to SVG path string.
-     * @param {Object} [options]
-     * @returns {string}
-     */
-    toSVGPathString(options) {
+    toSVGPathString(options?: ExportOptions): string {
         return this.items.map((item) => item.toSVGPathString?.(options) || '').join('');
     }
 
@@ -224,15 +138,11 @@ export class Group extends Geometry {
     // Bounding Box
     // =========================================================================
 
-    /**
-     * Get loose bounding box.
-     * @returns {BoundingBox|undefined}
-     */
-    looseBoundingBox() {
+    looseBoundingBox(): BoundingBox | undefined {
         const { items } = this;
         if (items.length === 0) return undefined;
 
-        let box;
+        let box: BoundingBox | undefined;
         for (let item of items) {
             const itemBox = item.looseBoundingBox();
             if (itemBox) {
@@ -243,15 +153,11 @@ export class Group extends Geometry {
         return box;
     }
 
-    /**
-     * Get tight bounding box.
-     * @returns {BoundingBox|undefined}
-     */
-    tightBoundingBox() {
+    tightBoundingBox(): BoundingBox | undefined {
         const { items } = this;
         if (items.length === 0) return undefined;
 
-        let box;
+        let box: BoundingBox | undefined;
         for (let item of items) {
             const itemBox = item.tightBoundingBox();
             if (itemBox) {
@@ -262,31 +168,16 @@ export class Group extends Geometry {
         return box;
     }
 
-    /**
-     * Check if contained by bounding box.
-     * @param {BoundingBox} box
-     * @returns {boolean}
-     */
-    isContainedByBoundingBox(box) {
+    isContainedByBoundingBox(box: BoundingBox): boolean {
         if (this.items.length === 0) return false;
         return this.items.every((item) => item.isContainedByBoundingBox(box));
     }
 
-    /**
-     * Check if intersected by bounding box.
-     * @param {BoundingBox} box
-     * @returns {boolean}
-     */
-    isIntersectedByBoundingBox(box) {
+    isIntersectedByBoundingBox(box: BoundingBox): boolean {
         return this.items.some((item) => item.isIntersectedByBoundingBox(box));
     }
 
-    /**
-     * Check if overlapped by bounding box.
-     * @param {BoundingBox} box
-     * @returns {boolean}
-     */
-    isOverlappedByBoundingBox(box) {
+    isOverlappedByBoundingBox(box: BoundingBox): boolean {
         return this.items.some((item) => item.isOverlappedByBoundingBox(box));
     }
 
@@ -294,15 +185,9 @@ export class Group extends Geometry {
     // Closest Point
     // =========================================================================
 
-    /**
-     * Find closest point within distance.
-     * @param {number} maxDistance
-     * @param {Vec} point
-     * @returns {import('./Geometry.js').ClosestPointResult}
-     */
-    closestPointWithinDistanceToPoint(maxDistance, point) {
+    closestPointWithinDistanceToPoint(maxDistance: number, point: Vec): ClosestPointResult {
         const { items } = this;
-        let closestResult = { distance: Infinity };
+        let closestResult: ClosestPointResult = { distance: Infinity };
         if (items.length === 0) return closestResult;
 
         for (let item of items) {
@@ -315,20 +200,11 @@ export class Group extends Geometry {
         return closestResult;
     }
 
-    /**
-     * Check if group contains point.
-     * @param {Vec} point
-     * @returns {boolean}
-     */
-    containsPoint(point) {
+    containsPoint(point: Vec): boolean {
         return this.items.some((item) => item.containsPoint?.(point));
     }
 
-    /**
-     * Reverse all items.
-     * @returns {Group} this
-     */
-    reverse() {
+    reverse(): Group {
         this.items.forEach((item) => item.reverse());
         this.items.reverse();
         return this;
@@ -338,29 +214,19 @@ export class Group extends Geometry {
     // Static Methods
     // =========================================================================
 
-    /**
-     * Validate that value is a valid Group.
-     * @param {*} a
-     * @returns {boolean}
-     */
-    static isValid(a) {
+    static isValid(a: unknown): a is Group {
         return a instanceof Group && a.isValid();
     }
 
-    /**
-     * Join paths that share endpoints within tolerance.
-     * @param {Path[]} paths
-     * @param {number} [tolerance=DEFAULT_TOLERANCE]
-     * @returns {Group}
-     */
-    static byJoiningPaths(paths, tolerance = DEFAULT_TOLERANCE) {
+    /** Join paths that share endpoints within tolerance. */
+    static byJoiningPaths(paths: Path[], tolerance: number = DEFAULT_TOLERANCE): Group {
         if (paths.length <= 1) return new Group(paths);
 
         const toleranceSq = tolerance * tolerance;
 
         // Clone because we're mutating the input paths
         let inPaths = paths.map((path) => path.clone());
-        let outPaths = [];
+        let outPaths: Path[] = [];
 
         while (true) {
             outPaths = [];
@@ -430,10 +296,7 @@ export class Group extends Geometry {
 // Helper Functions
 // =============================================================================
 
-/**
- * Indent a string by two spaces per line.
- * @private
- */
-const indentString = (s) => {
+/** Indent a string by two spaces per line. */
+const indentString = (s: string): string => {
     return '  ' + s.replace(/\n/g, '\n  ');
 };

@@ -7,25 +7,22 @@
 
 import { Vec } from '../Vec.js';
 import { Edge } from './Edge.js';
+import type { EdgeSelection } from './EdgeSelection.js';
 
-/**
- * @typedef {Object} EdgeHighlightStyle
- * @property {string} [strokeColor='#0066ff']
- * @property {number} [strokeWidth=3]
- * @property {string} [hoverColor='#0099ff']
- * @property {number} [hoverWidth=4]
- * @property {string} [selectColor='#ff6600']
- * @property {number} [selectWidth=3]
- * @property {number[]} [dashPattern]
- * @property {string} [lineCap='round']
- * @property {string} [lineJoin='round']
- */
+export interface EdgeHighlightStyle {
+    strokeColor?: string;
+    strokeWidth?: number;
+    hoverColor?: string;
+    hoverWidth?: number;
+    selectColor?: string;
+    selectWidth?: number;
+    dashPattern?: number[];
+    lineCap?: CanvasLineCap;
+    lineJoin?: CanvasLineJoin;
+}
 
-/**
- * Default highlight style.
- * @type {EdgeHighlightStyle}
- */
-export const DEFAULT_HIGHLIGHT_STYLE = {
+/** Default highlight style. */
+export const DEFAULT_HIGHLIGHT_STYLE: EdgeHighlightStyle = {
     strokeColor: '#0066ff',
     strokeWidth: 3,
     hoverColor: '#0099ff',
@@ -36,25 +33,19 @@ export const DEFAULT_HIGHLIGHT_STYLE = {
     lineJoin: 'round',
 };
 
-/**
- * Render an edge to a canvas context.
- * @param {CanvasRenderingContext2D} ctx
- * @param {Edge} edge
- * @param {Object} [options]
- * @param {string} [options.strokeColor]
- * @param {number} [options.strokeWidth]
- * @param {number[]} [options.dashPattern]
- * @param {string} [options.lineCap]
- * @param {string} [options.lineJoin]
- */
-export const renderEdge = (ctx, edge, options = {}) => {
+/** Render an edge to a canvas context. */
+export const renderEdge = (
+    ctx: CanvasRenderingContext2D,
+    edge: Edge,
+    options: EdgeHighlightStyle = {}
+): void => {
     const style = { ...DEFAULT_HIGHLIGHT_STYLE, ...options };
 
     ctx.save();
-    ctx.strokeStyle = style.strokeColor;
-    ctx.lineWidth = style.strokeWidth;
-    ctx.lineCap = style.lineCap;
-    ctx.lineJoin = style.lineJoin;
+    ctx.strokeStyle = style.strokeColor as string;
+    ctx.lineWidth = style.strokeWidth as number;
+    ctx.lineCap = style.lineCap as CanvasLineCap;
+    ctx.lineJoin = style.lineJoin as CanvasLineJoin;
 
     if (style.dashPattern) {
         ctx.setLineDash(style.dashPattern);
@@ -78,25 +69,23 @@ export const renderEdge = (ctx, edge, options = {}) => {
     ctx.restore();
 };
 
-/**
- * Render multiple edges.
- * @param {CanvasRenderingContext2D} ctx
- * @param {Edge[]} edges
- * @param {Object} [options]
- */
-export const renderEdges = (ctx, edges, options = {}) => {
+/** Render multiple edges. */
+export const renderEdges = (
+    ctx: CanvasRenderingContext2D,
+    edges: Edge[],
+    options: EdgeHighlightStyle = {}
+): void => {
     for (const edge of edges) {
         renderEdge(ctx, edge, options);
     }
 };
 
-/**
- * Render an edge with hover highlight.
- * @param {CanvasRenderingContext2D} ctx
- * @param {Edge} edge
- * @param {EdgeHighlightStyle} [style]
- */
-export const renderEdgeHover = (ctx, edge, style = {}) => {
+/** Render an edge with hover highlight. */
+export const renderEdgeHover = (
+    ctx: CanvasRenderingContext2D,
+    edge: Edge,
+    style: EdgeHighlightStyle = {}
+): void => {
     const s = { ...DEFAULT_HIGHLIGHT_STYLE, ...style };
     renderEdge(ctx, edge, {
         strokeColor: s.hoverColor,
@@ -106,13 +95,12 @@ export const renderEdgeHover = (ctx, edge, style = {}) => {
     });
 };
 
-/**
- * Render an edge with selection highlight.
- * @param {CanvasRenderingContext2D} ctx
- * @param {Edge} edge
- * @param {EdgeHighlightStyle} [style]
- */
-export const renderEdgeSelected = (ctx, edge, style = {}) => {
+/** Render an edge with selection highlight. */
+export const renderEdgeSelected = (
+    ctx: CanvasRenderingContext2D,
+    edge: Edge,
+    style: EdgeHighlightStyle = {}
+): void => {
     const s = { ...DEFAULT_HIGHLIGHT_STYLE, ...style };
     renderEdge(ctx, edge, {
         strokeColor: s.selectColor,
@@ -122,17 +110,19 @@ export const renderEdgeSelected = (ctx, edge, style = {}) => {
     });
 };
 
-/**
- * Render endpoint markers for an edge.
- * @param {CanvasRenderingContext2D} ctx
- * @param {Edge} edge
- * @param {Object} [options]
- * @param {number} [options.radius=4]
- * @param {string} [options.fillColor='#ffffff']
- * @param {string} [options.strokeColor='#0066ff']
- * @param {number} [options.strokeWidth=2]
- */
-export const renderEdgeEndpoints = (ctx, edge, options = {}) => {
+interface PointMarkerOptions {
+    radius?: number;
+    fillColor?: string;
+    strokeColor?: string;
+    strokeWidth?: number;
+}
+
+/** Render endpoint markers for an edge. */
+export const renderEdgeEndpoints = (
+    ctx: CanvasRenderingContext2D,
+    edge: Edge,
+    options: PointMarkerOptions = {}
+): void => {
     const radius = options.radius ?? 4;
     const fillColor = options.fillColor ?? '#ffffff';
     const strokeColor = options.strokeColor ?? '#0066ff';
@@ -154,17 +144,12 @@ export const renderEdgeEndpoints = (ctx, edge, options = {}) => {
     ctx.restore();
 };
 
-/**
- * Render a point indicator on an edge.
- * @param {CanvasRenderingContext2D} ctx
- * @param {Vec} position
- * @param {Object} [options]
- * @param {number} [options.radius=5]
- * @param {string} [options.fillColor='#ff6600']
- * @param {string} [options.strokeColor='#ffffff']
- * @param {number} [options.strokeWidth=2]
- */
-export const renderPointOnEdge = (ctx, position, options = {}) => {
+/** Render a point indicator on an edge. */
+export const renderPointOnEdge = (
+    ctx: CanvasRenderingContext2D,
+    position: Vec,
+    options: PointMarkerOptions = {}
+): void => {
     const radius = options.radius ?? 5;
     const fillColor = options.fillColor ?? '#ff6600';
     const strokeColor = options.strokeColor ?? '#ffffff';
@@ -183,64 +168,45 @@ export const renderPointOnEdge = (ctx, position, options = {}) => {
     ctx.restore();
 };
 
-/**
- * EdgeHighlighter manages rendering of edge highlights.
- */
+/** EdgeHighlighter manages rendering of edge highlights. */
 export class EdgeHighlighter {
-    /**
-     * Create a highlighter.
-     * @param {EdgeHighlightStyle} [style]
-     */
-    constructor(style = {}) {
+    style: EdgeHighlightStyle;
+    hoveredEdge: Edge | null;
+    hoverPosition: Vec | null;
+    selection: EdgeSelection | null;
+
+    constructor(style: EdgeHighlightStyle = {}) {
         this.style = { ...DEFAULT_HIGHLIGHT_STYLE, ...style };
-        /** @type {Edge|null} */
         this.hoveredEdge = null;
-        /** @type {Vec|null} */
         this.hoverPosition = null;
-        /** @type {import('./EdgeSelection.js').EdgeSelection|null} */
         this.selection = null;
     }
 
-    /**
-     * Set the hovered edge.
-     * @param {Edge|null} edge
-     * @param {Vec|null} [position]
-     * @returns {EdgeHighlighter} this
-     */
-    setHover(edge, position = null) {
+    /** Set the hovered edge. */
+    setHover(edge: Edge | null, position: Vec | null = null): EdgeHighlighter {
         this.hoveredEdge = edge;
         this.hoverPosition = position;
         return this;
     }
 
-    /**
-     * Clear hover state.
-     * @returns {EdgeHighlighter} this
-     */
-    clearHover() {
+    /** Clear hover state. */
+    clearHover(): EdgeHighlighter {
         this.hoveredEdge = null;
         this.hoverPosition = null;
         return this;
     }
 
-    /**
-     * Set the selection to render.
-     * @param {import('./EdgeSelection.js').EdgeSelection|null} selection
-     * @returns {EdgeHighlighter} this
-     */
-    setSelection(selection) {
+    /** Set the selection to render. */
+    setSelection(selection: EdgeSelection | null): EdgeHighlighter {
         this.selection = selection;
         return this;
     }
 
-    /**
-     * Render all highlights.
-     * @param {CanvasRenderingContext2D} ctx
-     */
-    render(ctx) {
+    /** Render all highlights. */
+    render(ctx: CanvasRenderingContext2D): void {
         // Render selected edges
         if (this.selection && !this.selection.isEmpty()) {
-            this.selection.forEach((edge) => {
+            this.selection.forEach((edge: Edge) => {
                 renderEdgeSelected(ctx, edge, this.style);
             });
         }
@@ -256,12 +222,8 @@ export class EdgeHighlighter {
         }
     }
 
-    /**
-     * Update style.
-     * @param {EdgeHighlightStyle} style
-     * @returns {EdgeHighlighter} this
-     */
-    setStyle(style) {
+    /** Update style. */
+    setStyle(style: EdgeHighlightStyle): EdgeHighlighter {
         this.style = { ...this.style, ...style };
         return this;
     }

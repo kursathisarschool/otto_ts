@@ -6,12 +6,18 @@
  * matches the API used by the original library.
  */
 
+/** A function that generates [0,1) numbers, with an extra .int32() method attached. */
+export interface PRNGFunction {
+    (): number;
+    int32(): number;
+}
+
 const mash = () => {
     let n = 0xefc8249d;
-    const mashFn = (data) => {
+    const mashFn = (data: unknown): number => {
         data = String(data);
-        for (let i = 0; i < data.length; i++) {
-            n += data.charCodeAt(i);
+        for (let i = 0; i < (data as string).length; i++) {
+            n += (data as string).charCodeAt(i);
             let h = 0.02519603282416938 * n;
             n = h >>> 0;
             h -= n;
@@ -25,12 +31,8 @@ const mash = () => {
     return mashFn;
 };
 
-/**
- * Create a seeded PRNG function.
- * @param {*} seed
- * @returns {function(): number} prng
- */
-export const seedrandom = (seed) => {
+/** Create a seeded PRNG function. */
+export const seedrandom = (seed: unknown): PRNGFunction => {
     const mashFn = mash();
     let s0 = mashFn(' ');
     let s1 = mashFn(' ');
@@ -45,13 +47,13 @@ export const seedrandom = (seed) => {
 
     let c = 1;
 
-    const prng = () => {
+    const prng = (() => {
         const t = 2091639 * s0 + c * 2.3283064365386963e-10;
         s0 = s1;
         s1 = s2;
         s2 = t - (c = t | 0);
         return s2;
-    };
+    }) as PRNGFunction;
 
     prng.int32 = () => {
         return (prng() * 0x100000000) | 0;
