@@ -12,7 +12,7 @@ import { Vec } from '../Vec.js';
 let testCount = 0;
 let passCount = 0;
 
-const test = (name, passed) => {
+const test = (name: string, passed: boolean) => {
     testCount++;
     if (passed) {
         passCount++;

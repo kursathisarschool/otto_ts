@@ -7,7 +7,7 @@ import { RandomGenerator, _seedGlobalRandom, random, randomInt } from '../random
 let testCount = 0;
 let passCount = 0;
 
-const test = (name, passed) => {
+const test = (name: string, passed: boolean) => {
     testCount++;
     if (passed) {
         passCount++;

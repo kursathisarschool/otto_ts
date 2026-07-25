@@ -8,7 +8,7 @@ import { Vec } from '../Vec.js';
 let testCount = 0;
 let passCount = 0;
 
-function test(name, condition) {
+function test(name: string , condition: boolean) {
     testCount++;
     if (condition) {
         passCount++;
@@ -19,8 +19,8 @@ function test(name, condition) {
 }
 
 // Helper for floating point comparison
-const approx = (a, b, epsilon = 1e-10) => Math.abs(a - b) < epsilon;
-const vecApprox = (v, x, y, epsilon = 1e-10) => approx(v.x, x, epsilon) && approx(v.y, y, epsilon);
+const approx = (a: number, b: number, epsilon: number = 1e-10) => Math.abs(a - b) < epsilon;
+const vecApprox = (v: Vec, x: number, y: number, epsilon: number = 1e-10) => approx(v.x, x, epsilon) && approx(v.y, y, epsilon);
 
 console.log('Vec.js tests:');
 

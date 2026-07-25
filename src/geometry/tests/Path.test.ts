@@ -13,18 +13,18 @@ import { Vec } from '../Vec.js';
 let testCount = 0;
 let passCount = 0;
 
-const test = (name, passed) => {
+const test = (name: string, passed: boolean) => {
     testCount++;
     if (passed) {
         passCount++;
-        console.log(`  \u2713 ${name}`);
+        console.log(`  ✓ ${name}`);
     } else {
-        console.log(`  \u2717 ${name}`);
+        console.log(`  ✗ ${name}`);
     }
 };
 
-const approx = (a, b, tolerance = 0.001) => Math.abs(a - b) < tolerance;
-const vecApprox = (v, x, y, tolerance = 0.001) =>
+const approx = (a: number, b: number, tolerance: number = 0.001) => Math.abs(a - b) < tolerance;
+const vecApprox = (v: Vec, x: number, y: number, tolerance: number = 0.001) =>
     approx(v.x, x, tolerance) && approx(v.y, y, tolerance);
 
 console.log('Path.js tests:\n');
@@ -145,13 +145,13 @@ console.log('\n  Anchor Access:');
 
 test('firstAnchor() returns first anchor', (() => {
     const p = new Path([new Anchor(new Vec(1, 2)), new Anchor(new Vec(3, 4))]);
-    const first = p.firstAnchor();
+    const first = p.firstAnchor()!;
     return first.position.x === 1 && first.position.y === 2;
 })());
 
 test('lastAnchor() returns last anchor', (() => {
     const p = new Path([new Anchor(new Vec(1, 2)), new Anchor(new Vec(3, 4))]);
-    const last = p.lastAnchor();
+    const last = p.lastAnchor()!;
     return last.position.x === 3 && last.position.y === 4;
 })());
 
@@ -211,7 +211,7 @@ test('scaleStroke() scales stroke width', (() => {
     const p = new Path([new Anchor(new Vec(0, 0))]);
     p.assignStroke(new Stroke(new Color(), false, 2));
     p.scaleStroke(3);
-    return p.stroke.width === 6;
+    return p.stroke!.width === 6;
 })());
 
 // =============================================================================
@@ -249,7 +249,7 @@ console.log('\n  Bounding Box:');
 
 test('looseBoundingBox() returns bounds for simple path', (() => {
     const p = Path.fromPoints([new Vec(10, 20), new Vec(30, 40)]);
-    const box = p.looseBoundingBox();
+    const box = p.looseBoundingBox()!;
     return box.min.x === 10 && box.min.y === 20 &&
            box.max.x === 30 && box.max.y === 40;
 })());
@@ -259,7 +259,7 @@ test('looseBoundingBox() includes handles', (() => {
         new Anchor(new Vec(0, 0), new Vec(0, 0), new Vec(50, 0)),
         new Anchor(new Vec(100, 0)),
     ]);
-    const box = p.looseBoundingBox();
+    const box = p.looseBoundingBox()!;
     return box.max.x >= 50;
 })());
 
@@ -352,7 +352,7 @@ console.log('\n  Anchor Insertion:');
 test('insertAnchorAtTime() adds anchor at midpoint', (() => {
     const p = Path.fromPoints([new Vec(0, 0), new Vec(100, 0)]);
     const anchor = p.insertAnchorAtTime(0.5);
-    return p.anchors.length === 3 && approx(anchor.position.x, 50);
+    return p.anchors.length === 3 && approx(anchor!.position.x, 50);
 })());
 
 test('insertAnchorAtTime() at existing anchor returns that anchor', (() => {
@@ -399,7 +399,7 @@ console.log('\n  Closest Point:');
 test('closestPointWithinDistanceToPoint() finds point on line', (() => {
     const p = Path.fromPoints([new Vec(0, 0), new Vec(100, 0)]);
     const result = p.closestPointWithinDistanceToPoint(50, new Vec(50, 10));
-    return approx(result.position.x, 50) && approx(result.position.y, 0) &&
+    return approx(result.position!.x, 50) && approx(result.position!.y, 0) &&
            approx(result.distance, 10);
 })());
 

@@ -14,13 +14,13 @@ import { Vec } from '../Vec.js';
 let testCount = 0;
 let passCount = 0;
 
-const test = (name, passed) => {
+const test = (name: string, passed: boolean) => {
     testCount++;
     if (passed) {
         passCount++;
-        console.log(`  \u2713 ${name}`);
+        console.log(`  ✓ ${name}`);
     } else {
-        console.log(`  \u2717 ${name}`);
+        console.log(`  ✗ ${name}`);
     }
 };
 
@@ -161,7 +161,7 @@ test('removeStroke() removes stroke', (() => {
 test('scaleStroke() scales stroke width', (() => {
     const s = new Shape([Path.rect(0, 0, 50, 50)], new Stroke(new Color(), false, 2));
     s.scaleStroke(4);
-    return s.stroke.width === 8;
+    return s.stroke!.width === 8;
 })());
 
 test('copyStyle() copies style from another shape', (() => {
@@ -197,7 +197,7 @@ test('looseBoundingBox() returns combined bounds', (() => {
         Path.fromPoints([new Vec(0, 0), new Vec(50, 0)]),
         Path.fromPoints([new Vec(100, 100), new Vec(150, 100)]),
     ]);
-    const box = s.looseBoundingBox();
+    const box = s.looseBoundingBox()!;
     return box.min.x === 0 && box.min.y === 0 &&
            box.max.x === 150 && box.max.y === 100;
 })());
@@ -231,7 +231,7 @@ test('closestPointWithinDistanceToPoint() finds closest across paths', (() => {
         Path.fromPoints([new Vec(0, 50), new Vec(100, 50)]),
     ]);
     const result = s.closestPointWithinDistanceToPoint(100, new Vec(50, 10));
-    return result.distance < 15 && result.position.y === 0;
+    return result.distance < 15 && result.position!.y === 0;
 })());
 
 test('closestPointWithinDistanceToPoint() returns Infinity for empty shape', (() => {
@@ -252,7 +252,6 @@ test('reverse() reverses all paths and path order', (() => {
         Path.fromPoints([new Vec(0, 50), new Vec(100, 50)]),
     ]);
     s.reverse();
-    // First path is now the second original, and its anchors are reversed
     return s.paths[0].anchors[0].position.y === 50 &&
            s.paths[0].anchors[0].position.x === 100;
 })());
@@ -292,7 +291,6 @@ test('fromSVGPathString() handles multiple subpaths', (() => {
 console.log('\n  Boolean Operations (stubs):');
 
 test('booleanUnion() returns shape with combined paths', (() => {
-    // Note: This is a stub - actual boolean ops require PathKit
     const shape = Shape.booleanUnion([
         Path.rect(0, 0, 50, 50),
         Path.rect(25, 25, 50, 50),

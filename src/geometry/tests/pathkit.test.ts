@@ -7,7 +7,7 @@ import { _initPathKit, getPathKit } from '../pathkit.js';
 let testCount = 0;
 let passCount = 0;
 
-const test = (name, passed) => {
+const test = (name: string, passed: boolean) => {
     testCount++;
     if (passed) {
         passCount++;

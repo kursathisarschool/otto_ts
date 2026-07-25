@@ -8,7 +8,7 @@ import { range, pairs, rotateArray } from '../util.js';
 let testCount = 0;
 let passCount = 0;
 
-function test(name, condition) {
+function test(name: string, condition: boolean) {
     testCount++;
     if (condition) {
         passCount++;
@@ -19,7 +19,7 @@ function test(name, condition) {
 }
 
 // Helper for array comparison
-const arrEq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const arrEq = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
 
 console.log('util.js tests:');
 

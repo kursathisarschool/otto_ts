@@ -9,7 +9,7 @@ import { AffineMatrix, Transform } from '../Matrix.js';
 let testCount = 0;
 let passCount = 0;
 
-function test(name, condition) {
+function test(name: string, condition: boolean) {
     testCount++;
     if (condition) {
         passCount++;
@@ -20,8 +20,17 @@ function test(name, condition) {
 }
 
 // Helper for floating point comparison
-const approx = (a, b, epsilon = 1e-10) => Math.abs(a - b) < epsilon;
-const matrixApprox = (m, a, b, c, d, tx, ty, epsilon = 1e-10) =>
+const approx = (a: number, b: number, epsilon: number = 1e-10) => Math.abs(a - b) < epsilon;
+const matrixApprox = (
+    m: AffineMatrix,
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    tx: number,
+    ty: number,
+    epsilon: number = 1e-10
+) =>
     approx(m.a, a, epsilon) && approx(m.b, b, epsilon) &&
     approx(m.c, c, epsilon) && approx(m.d, d, epsilon) &&
     approx(m.tx, tx, epsilon) && approx(m.ty, ty, epsilon);

@@ -14,13 +14,16 @@ import {
     linearSegmentLength,
     positionAndTimeAtClosestPointOnLine,
     segmentLength,
+    type Segment,
+    type Line,
 } from '../Segment.js';
+import type { Cubic } from '../bezier.js';
 import { Vec } from '../Vec.js';
 
 let testCount = 0;
 let passCount = 0;
 
-const test = (name, passed) => {
+const test = (name: string, passed: boolean) => {
     testCount++;
     if (passed) {
         passCount++;
@@ -30,7 +33,7 @@ const test = (name, passed) => {
     }
 };
 
-const approx = (a, b, tolerance = 0.001) => Math.abs(a - b) < tolerance;
+const approx = (a: number, b: number, tolerance: number = 0.001) => Math.abs(a - b) < tolerance;
 
 console.log('Segment.js tests:\n');
 
@@ -41,7 +44,7 @@ console.log('Segment.js tests:\n');
 console.log('  Segment Type Detection:');
 
 test('isSegmentLinear() returns true for linear segment', (() => {
-    const segment = [
+    const segment: Segment = [
         new Anchor(new Vec(0, 0)),
         new Anchor(new Vec(100, 0)),
     ];
@@ -49,7 +52,7 @@ test('isSegmentLinear() returns true for linear segment', (() => {
 })());
 
 test('isSegmentLinear() returns false for curved segment', (() => {
-    const segment = [
+    const segment: Segment = [
         new Anchor(new Vec(0, 0), new Vec(0, 0), new Vec(20, 0)),
         new Anchor(new Vec(100, 0), new Vec(-20, 0), new Vec(0, 0)),
     ];
@@ -63,7 +66,7 @@ test('isSegmentLinear() returns false for curved segment', (() => {
 console.log('\n  Segment Conversion:');
 
 test('lineFromSegment() extracts positions', (() => {
-    const segment = [
+    const segment: Segment = [
         new Anchor(new Vec(10, 20)),
         new Anchor(new Vec(30, 40)),
     ];
@@ -72,7 +75,7 @@ test('lineFromSegment() extracts positions', (() => {
 })());
 
 test('cubicFromSegment() creates cubic with handles', (() => {
-    const segment = [
+    const segment: Segment = [
         new Anchor(new Vec(0, 0), new Vec(0, 0), new Vec(10, 0)),
         new Anchor(new Vec(100, 0), new Vec(-10, 0), new Vec(0, 0)),
     ];
@@ -87,7 +90,7 @@ test('cubicFromSegment() creates cubic with handles', (() => {
 console.log('\n  Segment Length:');
 
 test('linearSegmentLength() calculates distance', (() => {
-    const segment = [
+    const segment: Segment = [
         new Anchor(new Vec(0, 0)),
         new Anchor(new Vec(3, 4)),
     ];
@@ -95,7 +98,7 @@ test('linearSegmentLength() calculates distance', (() => {
 })());
 
 test('segmentLength() for linear segment', (() => {
-    const segment = [
+    const segment: Segment = [
         new Anchor(new Vec(0, 0)),
         new Anchor(new Vec(100, 0)),
     ];
@@ -103,11 +106,11 @@ test('segmentLength() for linear segment', (() => {
 })());
 
 test('segmentLength() for curved segment is longer than straight', (() => {
-    const linear = [
+    const linear: Segment = [
         new Anchor(new Vec(0, 0)),
         new Anchor(new Vec(100, 0)),
     ];
-    const curved = [
+    const curved: Segment = [
         new Anchor(new Vec(0, 0), new Vec(0, 0), new Vec(0, 50)),
         new Anchor(new Vec(100, 0), new Vec(0, 50), new Vec(0, 0)),
     ];
@@ -213,22 +216,22 @@ test('lineLineIntersections T intersection', (() => {
 console.log('\n  Line-Cubic Intersection:');
 
 test('lineCubicIntersections finds intersection', (() => {
-    const line = [new Vec(0, 10), new Vec(100, 10)];
-    const cubic = [new Vec(50, 0), new Vec(50, 30), new Vec(50, 30), new Vec(50, 60)];
+    const line: Line = [new Vec(0, 10), new Vec(100, 10)];
+    const cubic: Cubic = [new Vec(50, 0), new Vec(50, 30), new Vec(50, 30), new Vec(50, 60)];
     const results = lineCubicIntersections(line, cubic);
     return results.length >= 1;
 })());
 
 test('lineCubicIntersections no intersection', (() => {
-    const line = [new Vec(0, 100), new Vec(100, 100)];
-    const cubic = [new Vec(0, 0), new Vec(10, 20), new Vec(30, 20), new Vec(40, 0)];
+    const line: Line = [new Vec(0, 100), new Vec(100, 100)];
+    const cubic: Cubic = [new Vec(0, 0), new Vec(10, 20), new Vec(30, 20), new Vec(40, 0)];
     const results = lineCubicIntersections(line, cubic);
     return results.length === 0;
 })());
 
 test('cubicLineIntersections reverses times', (() => {
-    const line = [new Vec(0, 10), new Vec(100, 10)];
-    const cubic = [new Vec(50, 0), new Vec(50, 30), new Vec(50, 30), new Vec(50, 60)];
+    const line: Line = [new Vec(0, 10), new Vec(100, 10)];
+    const cubic: Cubic = [new Vec(50, 0), new Vec(50, 30), new Vec(50, 30), new Vec(50, 60)];
     const results1 = lineCubicIntersections(line, cubic);
     const results2 = cubicLineIntersections(cubic, line);
     if (results1.length !== results2.length) return false;
@@ -244,22 +247,21 @@ test('cubicLineIntersections reverses times', (() => {
 console.log('\n  Cubic-Cubic Intersection:');
 
 test('cubicCubicIntersections crossing curves', (() => {
-    const cubic1 = [new Vec(0, 0), new Vec(33, 50), new Vec(66, 50), new Vec(100, 0)];
-    const cubic2 = [new Vec(0, 50), new Vec(33, 0), new Vec(66, 0), new Vec(100, 50)];
+    const cubic1: Cubic = [new Vec(0, 0), new Vec(33, 50), new Vec(66, 50), new Vec(100, 0)];
+    const cubic2: Cubic = [new Vec(0, 50), new Vec(33, 0), new Vec(66, 0), new Vec(100, 50)];
     const results = cubicCubicIntersections(cubic1, cubic2);
-    // These curves should intersect at least once
     return results.length >= 1;
 })());
 
 test('cubicCubicIntersections non-crossing curves', (() => {
-    const cubic1 = [new Vec(0, 0), new Vec(10, 10), new Vec(20, 10), new Vec(30, 0)];
-    const cubic2 = [new Vec(0, 50), new Vec(10, 60), new Vec(20, 60), new Vec(30, 50)];
+    const cubic1: Cubic = [new Vec(0, 0), new Vec(10, 10), new Vec(20, 10), new Vec(30, 0)];
+    const cubic2: Cubic = [new Vec(0, 50), new Vec(10, 60), new Vec(20, 60), new Vec(30, 50)];
     const results = cubicCubicIntersections(cubic1, cubic2);
     return results.length === 0;
 })());
 
 test('cubicCubicIntersections same curve returns empty', (() => {
-    const cubic = [new Vec(0, 0), new Vec(10, 20), new Vec(30, 20), new Vec(40, 0)];
+    const cubic: Cubic = [new Vec(0, 0), new Vec(10, 20), new Vec(30, 20), new Vec(40, 0)];
     const results = cubicCubicIntersections(cubic, cubic);
     return results.length === 0;
 })());
