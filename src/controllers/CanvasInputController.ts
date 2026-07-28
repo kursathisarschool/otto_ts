@@ -1,24 +1,6 @@
 /**
  * @fileoverview CanvasInputController — the controller for pointer-driven
- * canvas interaction: selection (click / shift-click / rubber-band), shape
- * dragging (single + multi), corner resize, rotation, right-drag panning,
- * wheel/pinch zoom, one-finger canvas panning, edge hover/selection, joinery
- * menu + joinery depth handles, path free-drawing with bezier curves, and
- * post-creation handle editing.
- *
- * Ported from the input half of the old 3526-line CanvasRenderer. The
- * controller WRITES InteractionState (which the render passes read), calls
- * store/selection methods for model changes, and asks CanvasView to repaint.
- * It owns no pixels and keeps no selection copies — SelectionModel is the
- * single source of truth.
- *
- * Two behaviors were deliberately generalized from the old per-type lists
- * (circle|polygon|star vs rectangle) to the shape schema's translate roles:
- *   1. Drag-end literal-binding sync covers every translatable property of
- *      every shape type (the old list skipped ellipse/triangle/etc., which
- *      could snap back after a drag if they carried literal bindings).
- *   2. See KeyboardShortcutController for the same change in arrow nudging.
- *
+ * canvas interaction.
  * @module controllers/CanvasInputController
  */
 import EventBus, { EVENTS } from '../events/EventBus.js';
@@ -30,56 +12,73 @@ import { edgesFromItem, DEFAULT_HIT_DISTANCE } from '../geometry/edge/index.js';
 import { PathShape } from '../models/shapes/PathShape.js';
 import { AddShapeCommand, MutateShapesCommand } from '../commands/shapeCommands.js';
 import { SetEdgeJoineryCommand } from '../commands/sceneCommands.js';
+import type { InteractionState } from './InteractionState.js';
+
+interface CanvasInputControllerDeps {
+    view: any;
+    context: any;
+    viewportController: any;
+    interaction: InteractionState;
+    hitTest: any;
+}
+
+interface TouchPoint {
+    x: number;
+    y: number;
+}
+
+interface TouchGesture {
+    mode: 'pan' | 'pinch';
+    lastCenter: TouchPoint;
+    lastDistance: number;
+}
 
 export class CanvasInputController {
-    /**
-     * @param {Object} deps
-     * @param {import('../views/canvas/CanvasView.js').CanvasView} deps.view
-     * @param {import('../core/SceneContext.js').SceneContext} deps.context
-     * @param {import('./ViewportController.js').ViewportController} deps.viewportController
-     * @param {import('./InteractionState.js').InteractionState} deps.interaction
-     * @param {import('../services/HitTestService.js').HitTestService} deps.hitTest
-     */
-    constructor({ view, context, viewportController, interaction, hitTest }) {
+    view: any;
+    context: any;
+    vc: any;
+    interaction: InteractionState;
+    hits: any;
+    edgeJoineryMenu: EdgeJoineryMenu;
+    touchPoints: Map<number, TouchPoint>;
+    touchGesture: TouchGesture | null;
+
+    constructor({ view, context, viewportController, interaction, hitTest }: CanvasInputControllerDeps) {
         this.view = view;
         this.context = context;
         this.vc = viewportController;
         this.interaction = interaction;
         this.hits = hitTest;
 
-        /** Right-click context menu for assigning joinery to an edge. */
         this.edgeJoineryMenu = new EdgeJoineryMenu({
             getShapeStore: () => this.context.shapeStore
         });
 
-        /** Active touch pointers in canvas-relative CSS pixels. */
         this.touchPoints = new Map();
-        /** Current touch gesture baseline (one-finger pan or two-finger pinch). */
         this.touchGesture = null;
 
         this.attach();
     }
 
     /** Wire the canvas DOM events (window resize belongs to CanvasView). */
-    attach() {
+    attach(): void {
         const canvas = this.view.canvas;
-        canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
-        canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
-        canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
-        canvas.addEventListener('dblclick', (e) => this.onDoubleClick(e));
-        canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
-        canvas.addEventListener('pointerdown', (e) => this.onTouchPointerDown(e));
-        canvas.addEventListener('pointermove', (e) => this.onTouchPointerMove(e));
-        canvas.addEventListener('pointerup', (e) => this.onTouchPointerUp(e));
-        canvas.addEventListener('pointercancel', (e) => this.onTouchPointerUp(e));
+        canvas.addEventListener('mousedown', (e: MouseEvent) => this.onMouseDown(e));
+        canvas.addEventListener('mousemove', (e: MouseEvent) => this.onMouseMove(e));
+        canvas.addEventListener('mouseup', (e: MouseEvent) => this.onMouseUp(e));
+        canvas.addEventListener('dblclick', (e: MouseEvent) => this.onDoubleClick(e));
+        canvas.addEventListener('wheel', (e: WheelEvent) => this.onWheel(e), { passive: false });
+        canvas.addEventListener('pointerdown', (e: PointerEvent) => this.onTouchPointerDown(e));
+        canvas.addEventListener('pointermove', (e: PointerEvent) => this.onTouchPointerMove(e));
+        canvas.addEventListener('pointerup', (e: PointerEvent) => this.onTouchPointerUp(e));
+        canvas.addEventListener('pointercancel', (e: PointerEvent) => this.onTouchPointerUp(e));
         canvas.addEventListener('mouseleave', () => {
             if (this.interaction.isDragging) {
                 this.onMouseUp(new MouseEvent('mouseup'));
             }
         });
 
-        // Right-drag is pan; suppress the browser context menu on the canvas.
-        document.addEventListener('contextmenu', (e) => {
+        document.addEventListener('contextmenu', (e: MouseEvent) => {
             if (e.target === canvas) {
                 e.preventDefault();
             }
@@ -87,13 +86,10 @@ export class CanvasInputController {
     }
 
     /**
-     * Capture toJSON() snapshots for a set of shapes — the "before"/"after"
-     * halves of a MutateShapesCommand recorded at gesture end.
-     * @param {string[]} ids
-     * @returns {Object.<string, Object>}
+     * Capture toJSON() snapshots for a set of shapes.
      */
-    snapshotShapes(ids) {
-        const map = {};
+    snapshotShapes(ids: string[]): Record<string, any> {
+        const map: Record<string, any> = {};
         ids.forEach(id => {
             const shape = this.context.shapeStore.get(id);
             if (shape) {
@@ -106,11 +102,9 @@ export class CanvasInputController {
     /**
      * Record a gesture as a MutateShapesCommand from before-snapshots and
      * the shapes' current state. Skips no-op gestures.
-     * @param {string} label
-     * @param {Object.<string, Object>} beforeSnapshots
      */
-    recordMutation(label, beforeSnapshots) {
-        const entries = {};
+    recordMutation(label: string, beforeSnapshots: Record<string, any>): void {
+        const entries: Record<string, { before: any; after: any }> = {};
         let changed = false;
         for (const [id, before] of Object.entries(beforeSnapshots)) {
             const shape = this.context.shapeStore.get(id);
@@ -127,7 +121,7 @@ export class CanvasInputController {
     }
 
     /** Convert a MouseEvent to canvas-relative CSS pixel coordinates. */
-    eventPoint(e) {
+    eventPoint(e: MouseEvent): TouchPoint {
         const rect = this.view.canvas.getBoundingClientRect();
         return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     }
@@ -137,7 +131,7 @@ export class CanvasInputController {
     // ─────────────────────────────────────────────────────────────────────
 
     /** Return midpoint + distance for the first two active touch points. */
-    touchMetrics() {
+    touchMetrics(): { center: TouchPoint; distance: number } | null {
         const points = Array.from(this.touchPoints.values());
         if (points.length === 0) return null;
         if (points.length === 1) {
@@ -151,7 +145,7 @@ export class CanvasInputController {
     }
 
     /** Start or re-baseline a one-finger pan / two-finger pinch gesture. */
-    resetTouchGesture() {
+    resetTouchGesture(): void {
         const metrics = this.touchMetrics();
         if (!metrics) {
             this.touchGesture = null;
@@ -164,19 +158,19 @@ export class CanvasInputController {
         };
     }
 
-    onTouchPointerDown(e) {
+    onTouchPointerDown(e: PointerEvent): void {
         if (e.pointerType !== 'touch') return;
         e.preventDefault();
         this.view.canvas.setPointerCapture?.(e.pointerId);
-        this.touchPoints.set(e.pointerId, this.eventPoint(e));
+        this.touchPoints.set(e.pointerId, this.eventPoint(e as unknown as MouseEvent));
         this.resetTouchGesture();
         this.view.canvas.style.cursor = 'grabbing';
     }
 
-    onTouchPointerMove(e) {
+    onTouchPointerMove(e: PointerEvent): void {
         if (e.pointerType !== 'touch' || !this.touchPoints.has(e.pointerId)) return;
         e.preventDefault();
-        this.touchPoints.set(e.pointerId, this.eventPoint(e));
+        this.touchPoints.set(e.pointerId, this.eventPoint(e as unknown as MouseEvent));
         const metrics = this.touchMetrics();
         const gesture = this.touchGesture;
         if (!metrics || !gesture) {
@@ -190,8 +184,6 @@ export class CanvasInputController {
                 metrics.center.y - gesture.lastCenter.y
             );
         } else if (this.touchPoints.size >= 2 && gesture.mode === 'pinch') {
-            // Moving the midpoint pans naturally; changing finger separation
-            // zooms around that midpoint so the content stays under the hand.
             this.vc.pan(
                 metrics.center.x - gesture.lastCenter.x,
                 metrics.center.y - gesture.lastCenter.y
@@ -201,17 +193,15 @@ export class CanvasInputController {
                 this.vc.zoom(factor, metrics.center.x, metrics.center.y);
             }
         } else {
-            // Pointer count changed between events; establish a fresh baseline
-            // to avoid a jump when a second finger lands or lifts.
             this.resetTouchGesture();
             return;
         }
 
-        this.touchGesture.lastCenter = { ...metrics.center };
-        this.touchGesture.lastDistance = metrics.distance;
+        this.touchGesture!.lastCenter = { ...metrics.center };
+        this.touchGesture!.lastDistance = metrics.distance;
     }
 
-    onTouchPointerUp(e) {
+    onTouchPointerUp(e: PointerEvent): void {
         if (e.pointerType !== 'touch') return;
         e.preventDefault();
         this.touchPoints.delete(e.pointerId);
@@ -224,14 +214,13 @@ export class CanvasInputController {
     // Edge hover / click
     // ─────────────────────────────────────────────────────────────────────
 
-    updateEdgeHover(x, y) {
+    updateEdgeHover(x: number, y: number): void {
         const shapeStore = this.context.shapeStore;
         const selectionMode = shapeStore.getSelectionMode();
 
         const hit = this.hits.hitTestEdge(x, y);
 
         if (selectionMode === 'edge') {
-            // In edge mode, set edge hover
             if (hit) {
                 shapeStore.setHoveredEdge(hit.edge, hit.position);
             } else {
@@ -239,11 +228,9 @@ export class CanvasInputController {
             }
         } else if (selectionMode === 'shape') {
             if (hit) {
-                // In shape mode, when hovering over an edge, find the shape
-                // that owns it and highlight the whole shape.
                 const worldPos = this.vc.screenToWorld(x, y);
                 const resolvedShapes = shapeStore.getResolved();
-                let hoveredShapeId = null;
+                let hoveredShapeId: string | null = null;
 
                 const tolerance = DEFAULT_HIT_DISTANCE / this.vc.viewport.zoom;
                 for (const shape of resolvedShapes) {
@@ -268,13 +255,8 @@ export class CanvasInputController {
         }
     }
 
-    /**
-     * Handle edge click in edge selection mode
-     * @param {number} x - Screen X coordinate
-     * @param {number} y - Screen Y coordinate
-     * @param {boolean} shiftKey - Whether shift key is pressed
-     */
-    handleEdgeClick(x, y, shiftKey) {
+    /** Handle edge click in edge selection mode. */
+    handleEdgeClick(x: number, y: number, shiftKey: boolean): void {
         const shapeStore = this.context.shapeStore;
         const hit = this.hits.hitTestEdge(x, y);
 
@@ -293,11 +275,10 @@ export class CanvasInputController {
     // Mouse down
     // ─────────────────────────────────────────────────────────────────────
 
-    onMouseDown(e) {
+    onMouseDown(e: MouseEvent): void {
         const { x, y } = this.eventPoint(e);
         const ix = this.interaction;
 
-        // Path drawing tool (open path)
         if (e.button === 0 && ix.toolMode === 'path') {
             const worldPos = this.vc.screenToWorld(x, y);
             const anchorHit = this.hits.hitTestPathDrawAnchor(worldPos.x, worldPos.y);
@@ -318,7 +299,6 @@ export class CanvasInputController {
                 e.preventDefault();
                 return;
             }
-            // Skip if this is the second click of a double-click
             if (ix.skipNextPathClick) {
                 ix.skipNextPathClick = false;
                 e.preventDefault();
@@ -332,7 +312,6 @@ export class CanvasInputController {
                 Math.abs(worldPos.y - ix.lastPathClickPos.y) < 10;
 
             if (isDoubleClick && ix.isPathDrawing) {
-                // Check if double-clicking on the first point to close the path
                 if (ix.pathDrawPoints.length >= 3) {
                     const firstPoint = ix.pathDrawPoints[0];
                     const distanceToFirst = Math.hypot(
@@ -342,7 +321,6 @@ export class CanvasInputController {
                     const closeThreshold = 15 / this.vc.viewport.zoom;
 
                     if (distanceToFirst < closeThreshold) {
-                        // Double-click on first point: close the path
                         this.finishPathDrawing(true);
                         ix.skipNextPathClick = true;
                         ix.lastPathClickTime = 0;
@@ -352,14 +330,12 @@ export class CanvasInputController {
                     }
                 }
 
-                // Double-click elsewhere: set flag so NEXT segment will be curved
                 ix.nextSegmentCurved = true;
                 ix.pathDrawEditSegmentIndex = null;
                 ix.skipNextPathClick = true;
                 ix.lastPathClickTime = 0;
                 ix.lastPathClickPos = null;
             } else if (!ix.isPathDrawing) {
-                // First click: start path drawing
                 ix.isPathDrawing = true;
                 ix.pathDrawPoints = [{ x: worldPos.x, y: worldPos.y }];
                 ix.pathDrawCurveSegments = [];
@@ -370,7 +346,6 @@ export class CanvasInputController {
                 ix.lastPathClickTime = now;
                 ix.lastPathClickPos = { x: worldPos.x, y: worldPos.y };
             } else {
-                // Check if clicking near the first point to close the path
                 const firstPoint = ix.pathDrawPoints[0];
                 const distanceToFirst = Math.hypot(
                     worldPos.x - firstPoint.x,
@@ -384,7 +359,6 @@ export class CanvasInputController {
                     return;
                 }
 
-                // Regular click: add point, check if this segment should be curved
                 ix.pathDrawPoints.push({ x: worldPos.x, y: worldPos.y });
                 ix.pathDrawCurveSegments.push(ix.nextSegmentCurved);
                 ix.pathDrawHandles.push({ handleIn: null, handleOut: null });
@@ -403,7 +377,6 @@ export class CanvasInputController {
             return;
         }
 
-        // Right click: edge joinery menu or pan
         if (e.button === 2) {
             const hit = this.hits.hitTestEdge(x, y);
             if (hit && hit.edge) {
@@ -423,17 +396,14 @@ export class CanvasInputController {
             return;
         }
 
-        // Left click for selection/shape drag
         if (e.button === 0) {
             const worldPos = this.vc.screenToWorld(x, y);
             const shapeStore = this.context.shapeStore;
             const selection = this.context.selection;
 
-            // Check if clicking on a joinery handle first
             const joineryHit = this.hits.hitTestJoineryHandle(worldPos.x, worldPos.y);
             if (joineryHit) {
                 if (joineryHit.type === 'align') {
-                    // Toggle alignment (undoable)
                     const currentJoinery = shapeStore.getEdgeJoinery(joineryHit.edge);
                     if (currentJoinery) {
                         const newAlign = currentJoinery.align === 'left' ? 'right' : 'left';
@@ -445,7 +415,6 @@ export class CanvasInputController {
                     e.preventDefault();
                     return;
                 } else if (joineryHit.type === 'depth') {
-                    // Start dragging depth
                     ix.isDraggingJoineryHandle = true;
                     ix.joineryDragStart = {
                         edge: joineryHit.edge,
@@ -461,21 +430,19 @@ export class CanvasInputController {
                 }
             }
 
-            // Handle edge selection mode
             if (shapeStore.getSelectionMode() === 'edge') {
                 this.handleEdgeClick(x, y, e.shiftKey);
                 e.preventDefault();
                 return;
             }
 
-            // Check if clicking on a bezier handle (when in handle edit mode)
             if (ix.handleEditState) {
                 const handleHit = this.hits.hitTestHandle(worldPos.x, worldPos.y);
                 if (handleHit) {
                     ix.isDraggingHandle = true;
                     ix.handleEditState.activeHandle = handleHit.handleType;
                     ix.handleDragStart = { x: worldPos.x, y: worldPos.y };
-                    ix.handleEditState.beforeSnapshots = this.snapshotShapes([ix.handleEditState.shapeId]);
+                    (ix.handleEditState as any).beforeSnapshots = this.snapshotShapes([ix.handleEditState.shapeId]);
                     this.view.canvas.style.cursor = 'move';
                     e.preventDefault();
                     return;
@@ -495,7 +462,7 @@ export class CanvasInputController {
                         startAngle,
                         startRotation,
                         beforeSnapshots: this.snapshotShapes([rotationHit.shapeId])
-                    };
+                    } as any;
                     this.view.canvas.style.cursor = 'grabbing';
                     e.preventDefault();
                     return;
@@ -521,7 +488,7 @@ export class CanvasInputController {
                     strategy,
                     changedProps: [],
                     beforeSnapshots: this.snapshotShapes([resizeHit.shapeId])
-                };
+                } as any;
                 this.view.canvas.style.cursor = getResizeCursor(resizeHit.handle);
                 e.preventDefault();
                 return;
@@ -529,7 +496,6 @@ export class CanvasInputController {
 
             const shape = this.hits.hitTest(x, y);
 
-            // Shift+click for multi-selection
             if (e.shiftKey && shape) {
                 if (selection.selectedShapeIds.has(shape.id)) {
                     shapeStore.removeFromSelection(shape.id);
@@ -541,30 +507,24 @@ export class CanvasInputController {
             }
 
             if (shape) {
-                // Check if we're clicking on an already selected shape
                 const isAlreadySelected = selection.selectedShapeIds.has(shape.id);
 
-                // Clear handle editing if clicking on a different shape
                 if (ix.handleEditState && ix.handleEditState.shapeId !== shape.id) {
                     ix.handleEditState = null;
                 }
 
                 if (!e.shiftKey && !isAlreadySelected) {
-                    // Single selection - clear multi-select
                     shapeStore.setSelected(shape.id);
                 } else if (!isAlreadySelected) {
                     shapeStore.addToSelection(shape.id);
                 } else {
-                    // Clicked an already-selected shape: it becomes primary
-                    // (matches the old local-state behavior).
                     selection.primaryId = shape.id;
                 }
 
-                // Store every selected shape's initial position for multi-drag
-                const selectedIdsArray = Array.from(selection.selectedShapeIds);
-                const initialPositions = {};
+                const selectedIdsArray: string[] = Array.from(selection.selectedShapeIds);
+                const initialPositions: Record<string, any> = {};
 
-                selectedIdsArray.forEach(id => {
+                selectedIdsArray.forEach((id: any) => {
                     const selShape = shapeStore.get(id);
                     if (!selShape) return;
                     const resolvedSelShape = this.context.bindingResolver.resolveShape(selShape);
@@ -582,20 +542,16 @@ export class CanvasInputController {
                     selectedIds: selectedIdsArray,
                     initialPositions,
                     beforeSnapshots: this.snapshotShapes(selectedIdsArray)
-                };
+                } as any;
 
                 this.view.canvas.style.cursor = 'grabbing';
             } else {
-                // Start selection rectangle
                 if (!e.shiftKey) {
                     shapeStore.clearSelection();
-                    // Clear handle editing when clicking on empty space
                     ix.handleEditState = null;
                 }
                 ix.isSelecting = true;
                 ix.selectionStart = { x: worldPos.x, y: worldPos.y, screenX: x, screenY: y };
-                // Marquee accumulates candidate ids here until mouse-up commits
-                // them to the SelectionModel (avoids event spam per mouse-move).
                 ix.marqueeIds = e.shiftKey ? new Set(selection.selectedShapeIds) : new Set();
                 ix.marqueeAdditive = e.shiftKey;
                 this.view.canvas.style.cursor = 'crosshair';
@@ -607,11 +563,10 @@ export class CanvasInputController {
     // Mouse move
     // ─────────────────────────────────────────────────────────────────────
 
-    onMouseMove(e) {
+    onMouseMove(e: MouseEvent): void {
         const { x, y } = this.eventPoint(e);
         const ix = this.interaction;
 
-        // Update edge hover in edge selection mode
         this.updateEdgeHover(x, y);
 
         if (ix.isDrawingAnchorDrag && ix.pathDrawAnchorIndex !== null) {
@@ -653,7 +608,7 @@ export class CanvasInputController {
                         y: -ny * fixedHandleLength
                     };
                 } else {
-                    ix.pathDrawHandles[ix.pathDrawHandleState.pointIndex][ix.pathDrawHandleState.handleType] = handleVec;
+                    (ix.pathDrawHandles[ix.pathDrawHandleState.pointIndex] as any)[ix.pathDrawHandleState.handleType] = handleVec;
                 }
                 this.view.requestRender();
             }
@@ -684,7 +639,6 @@ export class CanvasInputController {
             return;
         }
 
-        // Handle dragging bezier handles
         if (ix.isDraggingHandle && ix.handleEditState) {
             const worldPos = this.vc.screenToWorld(x, y);
             const shape = this.context.shapeStore.get(ix.handleEditState.shapeId);
@@ -702,12 +656,10 @@ export class CanvasInputController {
             return;
         }
 
-        // Handle joinery depth dragging
         if (ix.isDraggingJoineryHandle && ix.joineryDragStart) {
             const worldPos = this.vc.screenToWorld(x, y);
             const handle = ix.joineryDragStart.handle;
 
-            // New depth = mouse position projected onto the edge normal
             const dx = worldPos.x - handle.p1.x - handle.ux * (handle.length / 2);
             const dy = worldPos.y - handle.p1.y - handle.uy * (handle.length / 2);
             const projectedDist = (dx * handle.nx + dy * handle.ny) * handle.direction;
@@ -741,7 +693,6 @@ export class CanvasInputController {
             return;
         }
 
-        // Update cursor and hover state for joinery handles
         if (!ix.isDragging && !ix.isSelecting) {
             const worldPos = this.vc.screenToWorld(x, y);
             const joineryHit = this.hits.hitTestJoineryHandle(worldPos.x, worldPos.y);
@@ -774,7 +725,6 @@ export class CanvasInputController {
             }
         }
 
-        // Update cursor when hovering over handles
         if (ix.isPathDrawing && !ix.isDragging) {
             const worldPos = this.vc.screenToWorld(x, y);
             const handleHit = this.hits.hitTestPathDrawHandle(worldPos.x, worldPos.y);
@@ -787,15 +737,12 @@ export class CanvasInputController {
 
         if (ix.isDragging) {
             if (ix.dragStart.viewportX !== undefined) {
-                // Panning
                 const dx = x - ix.dragStart.x;
                 const dy = y - ix.dragStart.y;
                 this.vc.viewport.x = ix.dragStart.viewportX + dx;
                 this.vc.viewport.y = ix.dragStart.viewportY + dy;
                 this.view.requestRender();
             } else if (ix.dragStart.shapeId) {
-                // Moving shape(s) - mutate directly during drag for performance;
-                // events + binding sync happen once on mouse-up.
                 const selectedIds = ix.dragStart.selectedIds || [ix.dragStart.shapeId];
                 const initialWorldPos = this.vc.screenToWorld(ix.dragStart.x, ix.dragStart.y);
                 let currentWorldPos = this.vc.screenToWorld(x, y);
@@ -807,7 +754,7 @@ export class CanvasInputController {
                 const dx = currentWorldPos.x - initialWorldPos.x;
                 const dy = currentWorldPos.y - initialWorldPos.y;
 
-                selectedIds.forEach(shapeId => {
+                selectedIds.forEach((shapeId: string) => {
                     const shape = this.context.shapeStore.get(shapeId);
                     if (!shape) return;
                     const initialPos = ix.dragStart.initialPositions?.[shapeId];
@@ -819,7 +766,6 @@ export class CanvasInputController {
                 this.view.requestRender();
             }
         } else if (ix.isSelecting && ix.selectionStart) {
-            // Update selection rectangle
             const currentWorldPos = this.vc.screenToWorld(x, y);
             ix.selectionRect = {
                 x: Math.min(ix.selectionStart.x, currentWorldPos.x),
@@ -828,10 +774,9 @@ export class CanvasInputController {
                 height: Math.abs(currentWorldPos.y - ix.selectionStart.y)
             };
 
-            // Collect candidate shapes within the rectangle (committed on up)
             const shapes = this.context.shapeStore.getResolved();
-            const inRect = new Set();
-            shapes.forEach(shape => {
+            const inRect = new Set<string>();
+            shapes.forEach((shape: any) => {
                 const bounds = shape.getBounds();
                 if (this.isRectOverlapping(ix.selectionRect, bounds)) {
                     inRect.add(shape.id);
@@ -839,15 +784,12 @@ export class CanvasInputController {
             });
 
             if (ix.marqueeAdditive) {
-                // Shift-marquee accumulates (matches the old add-only behavior)
-                inRect.forEach(id => ix.marqueeIds.add(id));
+                inRect.forEach(id => ix.marqueeIds!.add(id));
             } else {
                 ix.marqueeIds = inRect;
             }
-            // Live-commit so SelectionPass shows brackets while dragging,
-            // exactly like the old renderer's local-set behavior.
             this.context.selection.selectedShapeIds.clear();
-            ix.marqueeIds.forEach(id => this.context.selection.selectedShapeIds.add(id));
+            ix.marqueeIds!.forEach((id: string) => this.context.selection.selectedShapeIds.add(id));
 
             this.view.requestRender();
         }
@@ -857,14 +799,14 @@ export class CanvasInputController {
     // Move-state helpers (duck-typed by property presence)
     // ─────────────────────────────────────────────────────────────────────
 
-    getShapeMoveState(shape, resolvedShape) {
+    getShapeMoveState(shape: any, resolvedShape: any): any {
         const ref = resolvedShape || shape;
         if (!ref) return null;
 
         if (shape.type === 'path' && Array.isArray(shape.points)) {
             return {
                 kind: 'points',
-                points: shape.points.map((p) => ({ x: p.x, y: p.y }))
+                points: shape.points.map((p: any) => ({ x: p.x, y: p.y }))
             };
         }
 
@@ -887,11 +829,11 @@ export class CanvasInputController {
         return null;
     }
 
-    applyShapeMoveState(shape, state, dx, dy) {
+    applyShapeMoveState(shape: any, state: any, dx: number, dy: number): void {
         if (!shape || !state) return;
         switch (state.kind) {
             case 'points':
-                shape.points = state.points.map((p) => ({
+                shape.points = state.points.map((p: any) => ({
                     x: p.x + dx,
                     y: p.y + dy
                 }));
@@ -919,10 +861,8 @@ export class CanvasInputController {
         }
     }
 
-    /**
-     * Check if two rectangles overlap
-     */
-    isRectOverlapping(rect1, rect2) {
+    /** Check if two rectangles overlap. */
+    isRectOverlapping(rect1: any, rect2: any): boolean {
         return !(rect1.x + rect1.width < rect2.x ||
                  rect2.x + rect2.width < rect1.x ||
                  rect1.y + rect1.height < rect2.y ||
@@ -930,11 +870,9 @@ export class CanvasInputController {
     }
 
     /**
-     * Sync literal bindings to the current raw values of the given
-     * properties (drag-end persistence: without this, a property carrying a
-     * LiteralBinding would snap back on the next resolve()).
+     * Sync literal bindings to the current raw values of the given properties.
      */
-    updateBindingsForProperties(shape, properties) {
+    updateBindingsForProperties(shape: any, properties: string[]): void {
         if (!shape || !Array.isArray(properties)) return;
         properties.forEach((property) => {
             if (shape[property] === undefined) return;
@@ -948,11 +886,9 @@ export class CanvasInputController {
     }
 
     /**
-     * Every bindable schema property with a translate role — the properties a
-     * move mutates, and therefore the ones whose literal bindings need
-     * syncing at drag end.
+     * Every bindable schema property with a translate role.
      */
-    translatablePropertiesOf(shape) {
+    translatablePropertiesOf(shape: any): string[] {
         const schema = shape.constructor.fullSchema ?? {};
         return Object.keys(schema).filter(prop => schema[prop].translate && schema[prop].bindable);
     }
@@ -961,10 +897,9 @@ export class CanvasInputController {
     // Mouse up
     // ─────────────────────────────────────────────────────────────────────
 
-    onMouseUp(e) {
+    onMouseUp(e: MouseEvent): void {
         const ix = this.interaction;
 
-        // Finish joinery handle dragging: record the depth change for undo
         if (ix.isDraggingJoineryHandle) {
             const dragStart = ix.joineryDragStart;
             if (dragStart) {
@@ -972,7 +907,7 @@ export class CanvasInputController {
                 if (finalJoinery && dragStart.originalJoinery &&
                     finalJoinery.thicknessMm !== dragStart.originalJoinery.thicknessMm) {
                     const command = new SetEdgeJoineryCommand(dragStart.edge, { ...finalJoinery });
-                    command.previousJoinery = { ...dragStart.originalJoinery };
+                    (command as any).previousJoinery = { ...dragStart.originalJoinery };
                     this.context.history.record(command);
                 }
             }
@@ -987,7 +922,7 @@ export class CanvasInputController {
             const shape = this.context.shapeStore.get(ix.rotationState.shapeId);
             if (shape) {
                 EventBus.emit(EVENTS.PARAM_CHANGED, { shapeId: shape.id });
-                this.recordMutation('Rotate shape', ix.rotationState.beforeSnapshots ?? {});
+                this.recordMutation('Rotate shape', (ix.rotationState as any).beforeSnapshots ?? {});
             }
             ix.isRotating = false;
             ix.rotationState = null;
@@ -1001,7 +936,7 @@ export class CanvasInputController {
             if (shape) {
                 this.updateBindingsForProperties(shape, ix.resizeState.changedProps || []);
                 EventBus.emit(EVENTS.PARAM_CHANGED, { shapeId: shape.id });
-                this.recordMutation('Resize shape', ix.resizeState.beforeSnapshots ?? {});
+                this.recordMutation('Resize shape', (ix.resizeState as any).beforeSnapshots ?? {});
             }
             ix.isResizing = false;
             ix.resizeState = null;
@@ -1027,11 +962,10 @@ export class CanvasInputController {
             return;
         }
 
-        // Finish handle dragging: record the curve edit for undo
         if (ix.isDraggingHandle) {
-            if (ix.handleEditState?.beforeSnapshots) {
-                this.recordMutation('Edit path handles', ix.handleEditState.beforeSnapshots);
-                ix.handleEditState.beforeSnapshots = null;
+            if ((ix.handleEditState as any)?.beforeSnapshots) {
+                this.recordMutation('Edit path handles', (ix.handleEditState as any).beforeSnapshots);
+                (ix.handleEditState as any).beforeSnapshots = null;
             }
             ix.isDraggingHandle = false;
             ix.handleDragStart = null;
@@ -1044,20 +978,16 @@ export class CanvasInputController {
         }
 
         if (ix.isDragging) {
-            // If we were dragging shape(s), sync bindings and emit events now
             if (ix.dragStart && ix.dragStart.shapeId) {
                 const selectedIds = ix.dragStart.selectedIds || [ix.dragStart.shapeId];
 
-                selectedIds.forEach(shapeId => {
+                selectedIds.forEach((shapeId: string) => {
                     const shape = this.context.shapeStore.get(shapeId);
                     if (!shape) return;
-                    // Schema-generic: sync literal bindings for every moved
-                    // property (old code covered only circle/polygon/star/rect).
                     this.updateBindingsForProperties(shape, this.translatablePropertiesOf(shape));
                     EventBus.emit(EVENTS.PARAM_CHANGED, { shapeId });
                 });
 
-                // One history entry for the whole (multi-)move.
                 this.recordMutation('Move shapes', ix.dragStart.beforeSnapshots ?? {});
             }
 
@@ -1065,7 +995,6 @@ export class CanvasInputController {
             ix.dragStart = null;
             this.view.canvas.style.cursor = 'crosshair';
         } else if (ix.isSelecting) {
-            // Commit the marquee to the SelectionModel (emits SHAPE_SELECTED)
             const ids = Array.from(ix.marqueeIds ?? []);
             if (ids.length > 0) {
                 this.context.shapeStore.setSelectedIds(ids);
@@ -1080,19 +1009,18 @@ export class CanvasInputController {
         }
 
         this.view.canvas.style.cursor = 'crosshair';
-        this.view.requestRender(); // Final render
+        this.view.requestRender();
     }
 
     // ─────────────────────────────────────────────────────────────────────
     // Double click
     // ─────────────────────────────────────────────────────────────────────
 
-    onDoubleClick(e) {
+    onDoubleClick(e: MouseEvent): void {
         const { x, y } = this.eventPoint(e);
         const worldPos = this.vc.screenToWorld(x, y);
         const ix = this.interaction;
 
-        // If in path drawing mode, check if double-clicking on first point to close
         if (ix.toolMode === 'path' && ix.isPathDrawing) {
             if (ix.pathDrawPoints.length >= 3) {
                 const firstPoint = ix.pathDrawPoints[0];
@@ -1109,14 +1037,12 @@ export class CanvasInputController {
                 }
             }
 
-            // Double-click elsewhere: set curve flag for next segment
             ix.nextSegmentCurved = true;
             this.view.requestRender();
             e.preventDefault();
             return;
         }
 
-        // Check if double-clicked on a path point to edit handles
         if (ix.toolMode === 'select') {
             const hitResult = this.hits.hitTestPathPoint(worldPos.x, worldPos.y);
             if (hitResult) {
@@ -1125,7 +1051,6 @@ export class CanvasInputController {
                 return;
             }
 
-            // Double-click elsewhere clears handle editing
             if (ix.handleEditState) {
                 ix.handleEditState = null;
                 this.view.requestRender();
@@ -1137,11 +1062,10 @@ export class CanvasInputController {
     // Handle editing / path finishing / tool mode / wheel / snap
     // ─────────────────────────────────────────────────────────────────────
 
-    startHandleEditing(shapeId, pointIndex) {
+    startHandleEditing(shapeId: string, pointIndex: number): void {
         const shape = this.context.shapeStore.get(shapeId);
         if (!shape || shape.type !== 'path') return;
 
-        // Ensure the segments touching this point are curved
         if (pointIndex > 0 && pointIndex - 1 < shape.curveSegments.length) {
             shape.curveSegments[pointIndex - 1] = true;
         }
@@ -1149,7 +1073,6 @@ export class CanvasInputController {
             shape.curveSegments[pointIndex] = true;
         }
 
-        // Initialize handles array if not already set
         if (!shape.handles) {
             shape.handles = shape.points.map(() => ({ handleIn: null, handleOut: null }));
         }
@@ -1161,7 +1084,6 @@ export class CanvasInputController {
         const prevPoint = shape.points[pointIndex - 1];
         const nextPoint = shape.points[pointIndex + 1];
 
-        // Create handleOut if there's a next point
         if (nextPoint && !shape.handles[pointIndex].handleOut) {
             const dx = nextPoint.x - point.x;
             const dy = nextPoint.y - point.y;
@@ -1175,7 +1097,6 @@ export class CanvasInputController {
             }
         }
 
-        // Create handleIn if there's a previous point
         if (prevPoint && !shape.handles[pointIndex].handleIn) {
             const dx = prevPoint.x - point.x;
             const dy = prevPoint.y - point.y;
@@ -1189,8 +1110,6 @@ export class CanvasInputController {
             }
         }
 
-        // For the last point, also create a handleOut pointing away from the
-        // path so it is easy to continue the curve.
         if (!nextPoint && prevPoint && !shape.handles[pointIndex].handleOut) {
             const dx = point.x - prevPoint.x;
             const dy = point.y - prevPoint.y;
@@ -1209,11 +1128,8 @@ export class CanvasInputController {
         this.view.requestRender();
     }
 
-    /**
-     * Finish path drawing and add the shape to the store.
-     * @param {boolean} closed - Whether to close the path.
-     */
-    finishPathDrawing(closed = false) {
+    /** Finish path drawing and add the shape to the store. */
+    finishPathDrawing(closed: boolean = false): void {
         const ix = this.interaction;
         if (ix.pathDrawPoints.length > 1) {
             const shape = new PathShape(`path-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`, {
@@ -1224,10 +1140,8 @@ export class CanvasInputController {
                 curveSegments: ix.pathDrawCurveSegments,
                 handles: ix.pathDrawHandles
             });
-            // AddShapeCommand executes synchronously: adds + selects + records.
             this.context.history.execute(new AddShapeCommand(shape));
 
-            // Automatically show handles at the last point
             const lastPointIndex = shape.points.length - 1;
             this.startHandleEditing(shape.id, lastPointIndex);
         }
@@ -1236,7 +1150,7 @@ export class CanvasInputController {
     }
 
     /** Clear all in-progress path-drawing state. */
-    resetPathDrawState() {
+    resetPathDrawState(): void {
         const ix = this.interaction;
         ix.isPathDrawing = false;
         ix.pathDrawPoints = [];
@@ -1252,11 +1166,8 @@ export class CanvasInputController {
         ix.skipNextPathClick = false;
     }
 
-    /**
-     * Set the active tool.
-     * @param {'select'|'path'} mode
-     */
-    setToolMode(mode) {
+    /** Set the active tool. */
+    setToolMode(mode: 'select' | 'path'): void {
         const ix = this.interaction;
         ix.toolMode = mode;
         if (mode === 'path') {
@@ -1269,30 +1180,22 @@ export class CanvasInputController {
         EventBus.emit(EVENTS.TOOL_CHANGED, { mode });
     }
 
-    /**
-     * Wheel zoom centered on the cursor.
-     */
-    onWheel(e) {
+    /** Wheel zoom centered on the cursor. */
+    onWheel(e: WheelEvent): void {
         e.preventDefault();
-        const { x, y } = this.eventPoint(e);
-        // Trackpad pinches arrive as small ctrl+wheel deltas, while mouse
-        // wheels use much larger steps. Exponential scaling keeps both smooth
-        // and preserves direction without making trackpad pinch over-sensitive.
+        const { x, y } = this.eventPoint(e as unknown as MouseEvent);
         const sensitivity = e.ctrlKey ? 0.01 : 0.002;
         const factor = Math.max(0.8, Math.min(1.25, Math.exp(-e.deltaY * sensitivity)));
         this.vc.zoom(factor, x, y);
     }
 
-    /**
-     * Set snap strategy (Strategy Pattern)
-     * @param {import('../core/SnapStrategy.js').SnapStrategy} strategy
-     */
-    setSnapStrategy(strategy) {
+    /** Set snap strategy (Strategy Pattern). */
+    setSnapStrategy(strategy: any): void {
         this.interaction.snapStrategy = strategy;
     }
 
     /** Toggle between grid snapping and free movement. */
-    toggleGridSnap() {
+    toggleGridSnap(): void {
         if (this.interaction.snapStrategy instanceof GridSnap) {
             this.interaction.snapStrategy = new NoSnap();
         } else {

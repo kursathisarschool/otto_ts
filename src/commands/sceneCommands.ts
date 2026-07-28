@@ -1,38 +1,33 @@
 /**
- * @fileoverview Scene-level commands: edge joinery assignment and the
- * whole-scene replacement used by coarse operations (code run, blocks run,
- * clear-all) — the memento-style half of the hybrid undo design.
- *
+ * @fileoverview Scene-level commands: edge joinery assignment and whole-scene replacement.
  * @module commands/sceneCommands
  */
-import { Command } from './Command.js';
+import { Command, type SceneState } from './Command.js';
 
 export class SetEdgeJoineryCommand extends Command {
-    /**
-     * @param {Object} edge - The target edge (carries shapeId/pathIndex/index).
-     * @param {?Object} joinery - {type, thicknessMm, fingerCount, align} or
-     *   null to remove the joinery from this edge.
-     */
-    constructor(edge, joinery) {
+    edge: any;
+    joinery: any;
+    previousJoinery: any;
+
+    constructor(edge: any, joinery: any) {
         super(joinery ? 'Set joinery' : 'Remove joinery');
         this.edge = edge;
         this.joinery = joinery ? { ...joinery } : null;
         this.previousJoinery = undefined;
     }
 
-    execute(scene) {
+    execute(scene: SceneState): void {
         const store = scene.shapeStore;
         const existing = store.getEdgeJoinery(this.edge);
         this.previousJoinery = existing ? { ...existing } : null;
         this.apply(store, this.joinery);
     }
 
-    undo(scene) {
+    undo(scene: SceneState): void {
         this.apply(scene.shapeStore, this.previousJoinery);
     }
 
-    /** @private */
-    apply(store, joinery) {
+    private apply(store: any, joinery: any): void {
         if (joinery) {
             store.setEdgeJoinery(this.edge, joinery);
         } else {
@@ -41,48 +36,47 @@ export class SetEdgeJoineryCommand extends Command {
     }
 }
 
+interface SceneSnapshot {
+    parameters: any;
+    shapes: any;
+    edgeJoinery: any;
+    selectedShapeId: any;
+}
+
 /**
  * Replace the scene's shapes + parameters wholesale — the undo boundary for
- * operations that rebuild the scene (AQUI code run, blocks run, clear-all).
- *
- * Captures a before snapshot on construction and an after snapshot when the
- * operation completes (call captureAfter()), then is `record()`ed. The
- * viewport is deliberately NOT part of the snapshot (viewport changes are
- * not undoable).
+ * operations that rebuild the scene.
  */
 export class ReplaceSceneCommand extends Command {
-    /**
-     * @param {string} label - e.g. 'Run code'.
-     * @param {import('../core/SceneState.js').SceneState} scene - Captured
-     *   immediately as the BEFORE state.
-     */
-    constructor(label, scene) {
+    before: SceneSnapshot;
+    after: SceneSnapshot | null;
+
+    constructor(label: string, scene: SceneState) {
         super(label);
         this.before = ReplaceSceneCommand.snapshot(scene);
         this.after = null;
     }
 
     /** Capture the AFTER state once the wrapped operation has run. */
-    captureAfter(scene) {
+    captureAfter(scene: SceneState): void {
         this.after = ReplaceSceneCommand.snapshot(scene);
     }
 
-    /** @returns {boolean} True if the operation actually changed anything. */
-    isNoop() {
+    /** True if the operation actually changed anything. */
+    isNoop(): boolean {
         return this.after !== null &&
             JSON.stringify(this.before) === JSON.stringify(this.after);
     }
 
-    async execute(scene) {
+    async execute(scene: SceneState): Promise<void> {
         await ReplaceSceneCommand.restore(scene, this.after);
     }
 
-    async undo(scene) {
+    async undo(scene: SceneState): Promise<void> {
         await ReplaceSceneCommand.restore(scene, this.before);
     }
 
-    /** @private */
-    static snapshot(scene) {
+    private static snapshot(scene: SceneState): SceneSnapshot {
         return {
             parameters: scene.parameterStore.toJSON().parameters,
             shapes: scene.shapeStore.toJSON().shapes,
@@ -91,8 +85,7 @@ export class ReplaceSceneCommand extends Command {
         };
     }
 
-    /** @private */
-    static async restore(scene, snap) {
+    private static async restore(scene: SceneState, snap: SceneSnapshot | null): Promise<void> {
         if (!snap) return;
         await scene.parameterStore.fromJSON({ parameters: snap.parameters });
         await scene.shapeStore.fromJSON({
@@ -100,7 +93,6 @@ export class ReplaceSceneCommand extends Command {
             selectedShapeId: snap.selectedShapeId || null,
             edgeJoinery: snap.edgeJoinery || []
         });
-        // Stores' fromJSON is silent; announce so every panel re-reads.
         const { default: EventBus, EVENTS } = await import('../events/EventBus.js');
         EventBus.emit(EVENTS.SCENE_LOADED, { scene });
     }
