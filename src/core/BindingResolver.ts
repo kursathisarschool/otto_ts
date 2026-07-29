@@ -1,19 +1,21 @@
+import { Binding } from "../models/Binding.js";
+
 /**
  * BindingResolver using Facade Pattern
  * Provides a simple interface for resolving bindings and shapes
  */
 export class BindingResolver {
-    constructor(parameterStore, expressionParser) {
+
+    parameterStore: any;
+    expressionParser: any;
+
+    constructor(parameterStore: any, expressionParser: any) {
         this.parameterStore = parameterStore;
         this.expressionParser = expressionParser;
     }
     
-    /**
-     * Resolve a binding to a number value
-     * @param {Binding} binding 
-     * @returns {number}
-     */
-    resolveValue(binding) {
+    /** Resolve a binding to a number value. */
+    resolveValue(binding: Binding): number {
         if (!binding) {
             throw new Error('Binding is required');
         }
@@ -21,12 +23,8 @@ export class BindingResolver {
         return binding.resolve(this.parameterStore, this.expressionParser);
     }
     
-    /**
-     * Resolve all bindings in a shape
-     * @param {Shape} shape 
-     * @returns {Shape}
-     */
-    resolveShape(shape) {
+    /** Resolve all bindings in a shape. */
+    resolveShape(shape: any): any {
         if (!shape) {
             throw new Error('Shape is required');
         }
@@ -34,12 +32,8 @@ export class BindingResolver {
         return shape.resolve(this.parameterStore, this);
     }
     
-    /**
-     * Batch resolve multiple shapes
-     * @param {Array<Shape>} shapes 
-     * @returns {Array<Shape>}
-     */
-    resolveAll(shapes) {
+    /** Batch resolve multiple shapes. */
+    resolveAll(shapes: any[]): any[] {
         if (!Array.isArray(shapes)) {
             throw new Error('Shapes must be an array');
         }

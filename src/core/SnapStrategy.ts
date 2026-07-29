@@ -6,6 +6,12 @@
 /**
  * Base snap strategy interface
  */
+interface SnapContext {
+    gridSize?: number;
+    shapes?: any[]
+    snapDistance?: number;
+}
+
 export class SnapStrategy {
     /**
      * Snap coordinates
@@ -14,7 +20,7 @@ export class SnapStrategy {
      * @param {Object} context - Additional context (grid size, shapes, etc.)
      * @returns {Object} {x, y} - Snapped coordinates
      */
-    snap(x, y, context = {}) {
+    snap(x: number, y: number, context: SnapContext = {}): { x: number; y: number } {
         return { x, y };
     }
 }
@@ -23,7 +29,7 @@ export class SnapStrategy {
  * No snapping - returns coordinates as-is
  */
 export class NoSnap extends SnapStrategy {
-    snap(x, y, context = {}) {
+    snap(x: number, y: number, context: SnapContext = {}): { x: number; y: number } {
         return { x, y };
     }
 }
@@ -32,15 +38,15 @@ export class NoSnap extends SnapStrategy {
  * Snap to grid
  */
 export class GridSnap extends SnapStrategy {
-    /**
-     * @param {number} gridSize - Grid cell size
-     */
-    constructor(gridSize = 20) {
+    gridSize: number;
+
+    constructor(gridSize: number = 20) {
         super();
         this.gridSize = gridSize;
     }
     
-    snap(x, y, context = {}) {
+
+    snap(x: number, y: number, context: SnapContext = {}): { x: number; y: number } {
         const size = context.gridSize || this.gridSize;
         return {
             x: Math.round(x / size) * size,
@@ -53,15 +59,17 @@ export class GridSnap extends SnapStrategy {
  * Snap to other shapes (snaps to nearest shape vertex or center)
  */
 export class ShapeSnap extends SnapStrategy {
+    
+    snapDistance: number;
     /**
      * @param {number} snapDistance - Maximum distance to snap
      */
-    constructor(snapDistance = 10) {
+    constructor(snapDistance: number = 10) {
         super();
         this.snapDistance = snapDistance;
     }
     
-    snap(x, y, context = {}) {
+    snap(x: number, y: number, context: SnapContext = {}): { x: number; y: number } {
         const shapes = context.shapes || [];
         const snapDist = context.snapDistance || this.snapDistance;
         

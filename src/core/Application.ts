@@ -35,27 +35,61 @@ import { StorageManager } from '../persistence/StorageManager.js';
 import { FileManager } from '../persistence/FileManager.js';
 import * as Geometry from '../geometry/index.js';
 import EventBus, { EVENTS } from '../events/EventBus.js';
+import type { SceneState } from './SceneState.js';
+
+declare global {
+    interface Window {
+        OTTO_PLUGINS?: any[];
+    }
+}
 
 export class Application {
+    tabManager: TabManager;
+    geometry: typeof Geometry;
+    storageManager: any;
+    fileManager: any;
+
+    context: SceneContext | null;
+    viewportController: ViewportController | null;
+    interaction: InteractionState | null;
+    hitTestService: any;
+    canvasView: any;
+    canvasInput: CanvasInputController | null;
+    keyboardShortcuts: KeyboardShortcutController | null;
+
+    shapeLibrary: any;
+    parametersMenu: any;
+    propertiesPanel: any;
+    coachPanel: any;
+    tabBar: any;
+    zoomControls: any;
+    dragDropManager: DragDropManager | null;
+    blocksEditor: any;
+    codeEditor: any;
+    codeRunner: any;
+    editorSyncConnector: any;
+    panelResizer: any;
+    liveRegion: any;
+    canvasStatus: any;
+    commandCatalog: CommandCatalog | null;
+    pluginManager: any;
+
+    currentSceneState: SceneState | null;
+
     constructor() {
-        // Core managers
         this.tabManager = new TabManager();
-        // Geometry library (cuttle-geometry port)
         this.geometry = Geometry;
-        // Serializer is a static class, no instance needed
         this.storageManager = new StorageManager(this.tabManager, Serializer);
         this.fileManager = new FileManager(this.tabManager, Serializer);
 
-        // MVC canvas stack (initialized in init)
-        this.context = null;            // SceneContext: lazy resolver of the active scene
-        this.viewportController = null; // pan/zoom + coordinate transforms
-        this.interaction = null;        // ephemeral interaction view-model
-        this.hitTestService = null;     // pure hit-test queries
-        this.canvasView = null;         // canvas owner + render passes
-        this.canvasInput = null;        // mouse/wheel controller
-        this.keyboardShortcuts = null;  // canvas keyboard controller
+        this.context = null;
+        this.viewportController = null;
+        this.interaction = null;
+        this.hitTestService = null;
+        this.canvasView = null;
+        this.canvasInput = null;
+        this.keyboardShortcuts = null;
 
-        // UI Components (will be initialized in init)
         this.shapeLibrary = null;
         this.parametersMenu = null;
         this.propertiesPanel = null;
@@ -68,21 +102,14 @@ export class Application {
         this.codeRunner = null;
         this.editorSyncConnector = null;
 
-        // Undo/redo is per-tab: each Tab owns a HistoryManager, reached
-        // through this.context (SceneContext). No app-level history here.
-
-        // Current scene state reference
         this.currentSceneState = null;
     }
 
-    /**
-     * Initialize the application
-     */
-    init() {
-        // Get DOM elements
+    /** Initialize the application. */
+    init(): void {
         const tabBarContainer = document.getElementById('tab-bar-container');
         const shapeLibraryContainer = document.getElementById('shape-library-container');
-        const canvasElement = document.getElementById('main-canvas');
+        const canvasElement = document.getElementById('main-canvas') as HTMLCanvasElement;
         const parametersMenuContainer = document.getElementById('parameters-menu-container');
         const propertiesPanelContainer = document.getElementById('properties-panel-container');
         const coachButton = document.getElementById('btn-ai-coach');
@@ -95,22 +122,17 @@ export class Application {
             throw new Error('Required DOM elements not found');
         }
 
-        // Get current scene state
         this.currentSceneState = this.tabManager.getActiveScene();
         if (!this.currentSceneState) {
             throw new Error('No active scene available');
         }
 
-        // Initialize UI components
         this.tabBar = new TabBar(tabBarContainer, this.tabManager);
         this.tabBar.mount();
 
         this.shapeLibrary = new ShapeLibrary(shapeLibraryContainer, ShapeRegistry);
         this.shapeLibrary.mount();
 
-        // MVC canvas stack: context resolves the active scene lazily (the
-        // TabManager instance is swapped on load/import, hence the closure),
-        // the controllers own interaction, the view owns pixels.
         this.context = new SceneContext(() => this.tabManager);
         this.viewportController = new ViewportController(this.context);
         this.interaction = new InteractionState();
@@ -148,7 +170,6 @@ export class Application {
         );
         this.blocksEditor.mount();
 
-        // Initialize Code Editor (text-based programming)
         if (codeEditorContainer) {
             this.codeEditor = new CodeEditor(
                 codeEditorContainer,
@@ -167,14 +188,11 @@ export class Application {
             this.editorSyncConnector.connect();
         }
 
-        // Initialize text-based programming runner (for console access)
         this.codeRunner = new CodeRunner({
             shapeStore: this.currentSceneState.shapeStore,
             parameterStore: this.currentSceneState.parameterStore
         });
 
-        // Initialize Zoom Controls (delegates all zoom math to the
-        // ViewportController; no injected callbacks)
         this.zoomControls = new ZoomControls(zoomControlsContainer, {
             context: this.context,
             viewportController: this.viewportController
@@ -196,9 +214,6 @@ export class Application {
         );
         this.propertiesPanel.mount();
 
-        // AI Fabrication Coach: a top-right toolbar button toggles a flyover
-        // that reads the active scene through SceneContext and the current AQUI
-        // source from the code editor.
         if (coachButton) {
             this.coachPanel = new CoachPanel(this.context, {
                 button: coachButton,
@@ -207,50 +222,34 @@ export class Application {
             this.coachPanel.mount();
         }
 
-        // Initialize DragDropManager (context-based: always drops into the
-        // active tab's store)
         this.dragDropManager = new DragDropManager(
             canvasElement,
             this.context,
             ShapeRegistry
         );
-        this.dragDropManager.setScreenToWorldConverter((x, y) => {
-            return this.viewportController.screenToWorld(x, y);
+        this.dragDropManager.setScreenToWorldConverter((x: number, y: number) => {
+            return this.viewportController!.screenToWorld(x, y);
         });
 
-        // Initialize Panel Resizer
         this.panelResizer = new PanelResizer();
-        // Connect panel resizer to canvas renderer
         this.panelResizer.setOnResizeCallback(() => {
             if (this.canvasView) {
-                // Use requestAnimationFrame to ensure resize happens after layout
                 requestAnimationFrame(() => {
                     this.canvasView.resizeCanvas();
                 });
             }
         });
 
-        // Accessibility: wire the live regions for status + selection.
         this.liveRegion = new LiveRegion(document.getElementById('notification-region'));
         this.canvasStatus = new LiveRegion(document.getElementById('canvas-status'));
         this.setupCanvasAnnouncements();
 
-        // Setup event listeners
         this.setupEventListeners();
-
-        // Setup left panel tabs
         this.setupLeftPanelTabs();
-
-        // Setup keyboard shortcuts
         this.setupKeyboardShortcuts();
 
-        // Command catalog (backs plugin command registration + tooling).
         this.commandCatalog = new CommandCatalog();
 
-        // Plugin system: instantiate, load any plugins the host declared on
-        // window.OTTO_PLUGINS, then fire the app:init lifecycle hook. The
-        // SceneContext doubles as the PluginAPI's sceneState (it exposes
-        // shapeStore/parameterStore/viewport getters for the active tab).
         this.pluginManager = new PluginManager({
             eventBus: EventBus,
             shapeRegistry: ShapeRegistry,
@@ -259,25 +258,20 @@ export class Application {
             sceneState: this.context,
             application: this,
             geometry: this.geometry
-        });
+        } as any);
         this.initPlugins();
 
-        // Load initial state (autosave if available)
         this.loadInitialState();
 
-        // Start autosave
         this.storageManager.startAutoSave();
 
-        // Initialize undo/redo button states
         this.updateUndoRedoUI();
     }
 
     /**
-     * Load and activate host-declared plugins (window.OTTO_PLUGINS: an array
-     * of module paths or Plugin classes), then fire lifecycle hooks. Async
-     * but not awaited by init() — plugins load in the background.
+     * Load and activate host-declared plugins, then fire lifecycle hooks.
      */
-    async initPlugins() {
+    async initPlugins(): Promise<void> {
         try {
             const declared = (typeof window !== 'undefined' && window.OTTO_PLUGINS) || [];
             for (const source of declared) {
@@ -287,7 +281,6 @@ export class Application {
                 }
             }
 
-            // scene:loaded fires on load and on tab switch.
             EventBus.subscribe(EVENTS.SCENE_LOADED, () =>
                 this.pluginManager.api.executeHook('scene:loaded', { app: this }));
             EventBus.subscribe(EVENTS.TAB_SWITCHED, () =>
@@ -299,64 +292,51 @@ export class Application {
         }
     }
 
-    /**
-     * Setup event listeners
-     */
-    setupEventListeners() {
-        // Tab switches just re-point cached-store components; the canvas
-        // stack follows via SceneContext. Undo history lives on each Tab.
-        EventBus.subscribe(EVENTS.TAB_SWITCHED, ({ tab }) => {
+    /** Setup event listeners. */
+    setupEventListeners(): void {
+        EventBus.subscribe(EVENTS.TAB_SWITCHED, ({ tab }: any) => {
             if (tab) {
                 this.currentSceneState = tab.sceneState;
-                this.updateComponentsForNewScene(this.currentSceneState);
+                this.updateComponentsForNewScene(this.currentSceneState!);
                 this.updateUndoRedoUI();
             }
         });
 
-        // Undo/redo button state follows the active tab's HistoryManager.
         EventBus.subscribe(EVENTS.HISTORY_CHANGED, () => this.updateUndoRedoUI());
 
-        // Keyboard-added shapes (Enter/Space in the Shape Library) land at the
-        // viewport center via the same undoable AddShapeCommand as a drop.
-        EventBus.subscribe(EVENTS.SHAPE_KEYBOARD_ADD, ({ type }) => {
+        EventBus.subscribe(EVENTS.SHAPE_KEYBOARD_ADD, ({ type }: any) => {
             if (!type || !this.context) return;
-            const center = this.viewportController.screenToWorld(
-                (this.viewportController.cssWidth || 300) / 2,
-                (this.viewportController.cssHeight || 300) / 2
+            const center = this.viewportController!.screenToWorld(
+                (this.viewportController!.cssWidth || 300) / 2,
+                (this.viewportController!.cssHeight || 300) / 2
             );
             const shape = ShapeRegistry.create(type, center, {}, this.context.shapeStore);
             this.context.history.execute(new AddShapeCommand(shape));
         });
     }
 
-    /**
-     * Setup keyboard shortcuts
-     */
-    setupKeyboardShortcuts() {
-        document.addEventListener('keydown', (e) => {
+    /** Setup keyboard shortcuts. */
+    setupKeyboardShortcuts(): void {
+        document.addEventListener('keydown', (e: KeyboardEvent) => {
             if (this.isEditableTarget(e.target)) {
                 return;
             }
-            // Ctrl+S or Cmd+S: Save
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault();
                 this.save();
             }
 
-            // Ctrl+O or Cmd+O: Open
             if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
                 e.preventDefault();
                 this.importFile();
             }
 
-            // Ctrl+Z or Cmd+Z: Undo
             if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
                 e.preventDefault();
                 this.undo();
                 this.updateUndoRedoUI();
             }
 
-            // Ctrl+Y or Cmd+Y or Ctrl+Shift+Z: Redo
             if (((e.ctrlKey || e.metaKey) && e.key === 'y') ||
                 ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z')) {
                 e.preventDefault();
@@ -364,13 +344,11 @@ export class Application {
                 this.updateUndoRedoUI();
             }
 
-            // Ctrl+T or Cmd+T: New tab
             if ((e.ctrlKey || e.metaKey) && e.key === 't') {
                 e.preventDefault();
                 this.newTab();
             }
 
-            // Delete: Remove selected shape
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 e.preventDefault();
                 this.deleteSelectedShape();
@@ -378,50 +356,33 @@ export class Application {
         });
     }
 
-    /**
-     * Return true if a key event target is an editable control.
-     * @param {EventTarget|null} target
-     */
-    isEditableTarget(target) {
+    /** Return true if a key event target is an editable control. */
+    isEditableTarget(target: EventTarget | null): boolean {
         const el = target instanceof Element ? target : null;
         if (!el) return false;
         if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return true;
-        if (el.isContentEditable) return true;
+        if ((el as HTMLElement).isContentEditable) return true;
         if (el.closest('.CodeMirror')) return true;
         if (el.closest('.blockly-workspace') || el.closest('#blockly-container')) return true;
         return false;
     }
 
-    /**
-     * Update components when switching to a new scene
-     * @param {SceneState} sceneState
-     */
-    updateComponentsForNewScene(sceneState) {
-        // The canvas stack (CanvasView, controllers, ZoomControls,
-        // DragDropManager) resolves the active scene through SceneContext and
-        // needs no re-wiring here; CanvasView also resets interaction state
-        // on TAB_SWITCHED / SCENE_LOADED. The components below still cache
-        // store references and are updated explicitly (they migrate to
-        // SceneContext with the command-system refactor).
-
-        // Update parameters menu
+    /** Update components when switching to a new scene. */
+    updateComponentsForNewScene(sceneState: SceneState): void {
         this.parametersMenu.parameterStore = sceneState.parameterStore;
         this.parametersMenu.render();
 
-        // Update properties panel
         this.propertiesPanel.shapeStore = sceneState.shapeStore;
         this.propertiesPanel.parameterStore = sceneState.parameterStore;
         this.propertiesPanel.bindingResolver = sceneState.bindingResolver;
         this.propertiesPanel.selectedShape = null;
         this.propertiesPanel.render();
 
-        // Update blocks editor
         if (this.blocksEditor) {
             this.blocksEditor.setShapeStore(sceneState.shapeStore);
             this.blocksEditor.setParameterStore(sceneState.parameterStore);
         }
 
-        // Update code editor stores + sync
         if (this.codeEditor) {
             this.codeEditor.setStores(
                 sceneState.shapeStore,
@@ -430,22 +391,19 @@ export class Application {
         }
     }
 
-    /**
-     * Setup left panel tab switching between library and blocks
-     */
-    setupLeftPanelTabs() {
-        const tabButtons = Array.from(document.querySelectorAll('.panel-tab'));
-        const tabPanels = Array.from(document.querySelectorAll('.panel-content-tab'));
+    /** Setup left panel tab switching between library and blocks. */
+    setupLeftPanelTabs(): void {
+        const tabButtons = Array.from(document.querySelectorAll<HTMLElement>('.panel-tab'));
+        const tabPanels = Array.from(document.querySelectorAll<HTMLElement>('.panel-content-tab'));
 
         if (!tabButtons.length || !tabPanels.length) {
             return;
         }
 
-        const setActive = (panelName) => {
+        const setActive = (panelName: string | undefined): void => {
             tabButtons.forEach(button => {
                 const isActive = button.dataset.panel === panelName;
                 button.classList.toggle('active', isActive);
-                // ARIA tab state + roving tabindex.
                 button.setAttribute('aria-selected', String(isActive));
                 button.setAttribute('tabindex', isActive ? '0' : '-1');
             });
@@ -461,9 +419,8 @@ export class Application {
 
         tabButtons.forEach((button, index) => {
             button.addEventListener('click', () => setActive(button.dataset.panel));
-            // Left/Right arrow keys move between tabs (WAI-ARIA tablist).
-            button.addEventListener('keydown', (e) => {
-                let target = null;
+            button.addEventListener('keydown', (e: KeyboardEvent) => {
+                let target: HTMLElement | null = null;
                 if (e.key === 'ArrowRight') target = tabButtons[(index + 1) % tabButtons.length];
                 else if (e.key === 'ArrowLeft') target = tabButtons[(index - 1 + tabButtons.length) % tabButtons.length];
                 else if (e.key === 'Home') target = tabButtons[0];
@@ -479,14 +436,11 @@ export class Application {
         setActive('library');
     }
 
-    /**
-     * Announce selection changes on the canvas to screen readers via the
-     * visually-hidden #canvas-status live region.
-     */
-    setupCanvasAnnouncements() {
-        EventBus.subscribe(EVENTS.SHAPE_SELECTED, (payload) => {
+    /** Announce selection changes on the canvas to screen readers. */
+    setupCanvasAnnouncements(): void {
+        EventBus.subscribe(EVENTS.SHAPE_SELECTED, (payload: any) => {
             if (!this.canvasStatus) return;
-            const total = this.context?.scene?.shapeStore.getAll().length ?? 0;
+            const total = (this.context as any)?.scene?.shapeStore.getAll().length ?? 0;
             const ids = payload?.selectedIds ?? (payload?.id ? [payload.id] : []);
             if (!ids.length || !payload?.id) {
                 this.canvasStatus.announce('Selection cleared');
@@ -500,25 +454,19 @@ export class Application {
         });
     }
 
-    /**
-     * Load initial state from autosave
-     */
-    async loadInitialState() {
+    /** Load initial state from autosave. */
+    async loadInitialState(): Promise<void> {
         try {
             const tabManager = await this.storageManager.load();
             if (tabManager) {
-                // Replace current tab manager with loaded one
                 this.tabManager = tabManager;
 
-                // Update file and storage managers to use new tab manager
                 this.storageManager.tabManager = tabManager;
                 this.fileManager.tabManager = tabManager;
 
-                // Update tab bar
                 this.tabBar.tabManager = tabManager;
                 this.tabBar.render();
 
-                // Update current scene
                 this.currentSceneState = this.tabManager.getActiveScene();
                 if (this.currentSceneState) {
                     this.updateComponentsForNewScene(this.currentSceneState);
@@ -531,18 +479,14 @@ export class Application {
         }
     }
 
-    /**
-     * Create a new tab
-     */
-    newTab() {
+    /** Create a new tab. */
+    newTab(): void {
         const tabNumber = this.tabManager.tabs.length + 1;
         this.tabManager.createTab(`Scene ${tabNumber}`);
     }
 
-    /**
-     * Save current state (manual save to localStorage)
-     */
-    async save() {
+    /** Save current state (manual save to localStorage). */
+    async save(): Promise<boolean> {
         await this.pluginManager?.api.executeHook('before-save', { app: this });
         const success = this.storageManager.save();
         await this.pluginManager?.api.executeHook('after-save', { app: this, success });
@@ -555,10 +499,8 @@ export class Application {
         return success;
     }
 
-    /**
-     * Load from localStorage
-     */
-    async load() {
+    /** Load from localStorage. */
+    async load(): Promise<boolean> {
         const tabManager = await this.storageManager.load();
         if (tabManager) {
             this.tabManager = tabManager;
@@ -578,11 +520,8 @@ export class Application {
         return false;
     }
 
-    /**
-     * Export to file
-     * @param {string} filename
-     */
-    exportFile(filename = null) {
+    /** Export to file. */
+    exportFile(filename: string | null = null): boolean {
         const success = this.fileManager.exportToFile(filename);
         if (success) {
             this.showNotification('File exported successfully!', 'success');
@@ -592,10 +531,8 @@ export class Application {
         return success;
     }
 
-    /**
-     * Import from file
-     */
-    async importFile() {
+    /** Import from file. */
+    async importFile(): Promise<void> {
         const tabManager = await this.fileManager.showImportDialog();
         if (tabManager) {
             this.tabManager = tabManager;
@@ -614,14 +551,8 @@ export class Application {
 
     /**
      * Import a 3D STL file as a 2.5D footprint piece.
-     *
-     * Opens a file picker, parses the STL (ASCII or binary), reduces it to the
-     * convex-hull footprint of its top-down projection, and adds it as a closed
-     * PathShape at the viewport centre — carrying the model's Z-extent as the
-     * piece's `depth` so extruding it in 3D reproduces the original bounding
-     * volume. Added through AddShapeCommand, so it participates in undo.
      */
-    importSTL() {
+    importSTL(): void {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.stl,model/stl,application/sla';
@@ -631,24 +562,17 @@ export class Application {
             const reader = new FileReader();
             reader.onload = () => {
                 try {
-                    const parsed = StlImporter.parse(reader.result);
-
-                    // A 3D model has three silhouettes; pick the most
-                    // distinctive by default (a house's gabled FRONT beats its
-                    // square top), and let the user override the view.
+                    const parsed = StlImporter.parse(reader.result as ArrayBuffer);
+            
                     const autoPlane = StlImporter.bestPlane(parsed);
                     const raw = StlImporter.footprint(parsed, 1, autoPlane);
                     if (raw.points.length < 3) {
                         this.showNotification('STL footprint is degenerate (no area)', 'error');
                         return;
                     }
-
-                    // STL carries NO units and NO fixed orientation, so confirm
-                    // both scale and view in one prompt ("<scale> [view]"):
-                    // press Enter to accept the auto view at the suggested
-                    // scale, or type e.g. "10 top" / "1 side".
+            
                     const prefill = StlImporter.suggestScale(raw);
-                    const viewName = { xy: 'top', xz: 'front', yz: 'side' };
+                    const viewName: Record<string, string> = { xy: 'top', xz: 'front', yz: 'side' };
                     const answer = window.prompt(
                         `"${file.name}" — ${viewName[autoPlane]} view imports as ` +
                         `${raw.width.toFixed(1)} × ${raw.height.toFixed(1)} mm at scale 1.\n\n` +
@@ -658,16 +582,16 @@ export class Application {
                         `  view:  top | front | side   (default: ${viewName[autoPlane]})`,
                         String(prefill)
                     );
-                    if (answer === null) return; // cancelled
-
+                    if (answer === null) return;
+            
                     const tokens = answer.trim().split(/\s+/);
                     const parsedScale = parseFloat(tokens[0]);
                     const scale = Number.isFinite(parsedScale) && parsedScale > 0 ? parsedScale : 1;
-                    const planeByName = { top: 'xy', front: 'xz', side: 'yz' };
-                    const plane = planeByName[(tokens[1] || '').toLowerCase()] || autoPlane;
-
+                    const planeByName: Record<string, string> = { top: 'xy', front: 'xz', side: 'yz' };
+                    const plane = (planeByName[(tokens[1] || '').toLowerCase()] || autoPlane) as 'xy' | 'xz' | 'yz';
+            
                     this.addStlFootprint(parsed, file.name, { scale, plane });
-                } catch (error) {
+                } catch (error: any) {
                     console.error('STL import failed:', error);
                     this.showNotification(`Could not import STL: ${error.message}`, 'error');
                 }
@@ -678,23 +602,18 @@ export class Application {
         input.click();
     }
 
-    /**
-     * Build and add the footprint PathShape from a parsed STL.
-     * @param {{triangles: Array, bounds: Object}} parsed - StlImporter.parse output.
-     * @param {string} [fileName]
-     * @param {{scale?: number, plane?: 'xy'|'xz'|'yz'}} [options]
-     */
-    addStlFootprint(parsed, fileName = 'stl', { scale = 1, plane = 'xy' } = {}) {
-        // The TRUE silhouette (concave-aware); falls back to the hull internally
-        // if the projection is degenerate.
+    /** Build and add the footprint PathShape from a parsed STL. */
+    addStlFootprint(
+        parsed: any,
+        fileName: string = 'stl',
+        { scale = 1, plane = 'xy' }: { scale?: number; plane?: 'xy' | 'xz' | 'yz' } = {}
+    ): void {
         const fp = StlImporter.silhouette(parsed, { scale, plane });
         if (fp.points.length < 3) {
             this.showNotification('STL footprint is degenerate (no area)', 'error');
             return;
         }
 
-        // Centre the footprint's BOUNDING BOX (not its vertex centroid) on the
-        // viewport, at true (scaled mm) size.
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         for (const p of fp.points) {
             minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
@@ -702,13 +621,13 @@ export class Application {
         }
         const bcx = (minX + maxX) / 2;
         const bcy = (minY + maxY) / 2;
-        const center = this.viewportController.screenToWorld(
-            (this.viewportController.cssWidth || 300) / 2,
-            (this.viewportController.cssHeight || 300) / 2
+        const center = this.viewportController!.screenToWorld(
+            (this.viewportController!.cssWidth || 300) / 2,
+            (this.viewportController!.cssHeight || 300) / 2
         );
-        const points = fp.points.map(p => ({ x: p.x - bcx + center.x, y: p.y - bcy + center.y }));
+        const points = fp.points.map((p: any) => ({ x: p.x - bcx + center.x, y: p.y - bcy + center.y }));
 
-        const id = ShapeRegistry.generateId('path', this.context.shapeStore);
+        const id = ShapeRegistry.generateId('path', this.context!.shapeStore);
         const shape = new PathShape(id, {
             position: { x: center.x, y: center.y },
             points,
@@ -718,12 +637,11 @@ export class Application {
             z: 0
         });
 
-        this.context.history.execute(new AddShapeCommand(shape));
+        this.context!.history.execute(new AddShapeCommand(shape));
 
-        // Frame the import so its size reads correctly regardless of scale.
         this.zoomControls?.fitToContent();
 
-        const viewName = { xy: 'top', xz: 'front', yz: 'side' };
+        const viewName: Record<string, string> = { xy: 'top', xz: 'front', yz: 'side' };
         const holes = fp.holes > 0 ? ` — ${fp.holes} interior hole(s) not represented` : '';
         this.showNotification(
             `Imported ${fileName} (${viewName[fp.plane] || fp.plane} view): ` +
@@ -732,29 +650,20 @@ export class Application {
         );
     }
 
-    /**
-     * Show notification message
-     * @param {string} message
-     * @param {string} type - 'success' or 'error'
-     */
-    showNotification(message, type = 'success') {
-        // Announce to assistive tech via the persistent live region.
+    /** Show notification message. */
+    showNotification(message: string, type: string = 'success'): void {
         this.liveRegion?.announce(message);
 
-        // Create notification element
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.textContent = message;
 
-        // Add to document
         document.body.appendChild(notification);
 
-        // Show notification
         setTimeout(() => {
             notification.classList.add('show');
         }, 10);
 
-        // Remove after 3 seconds
         setTimeout(() => {
             notification.classList.remove('show');
             setTimeout(() => {
@@ -765,12 +674,8 @@ export class Application {
         }, 3000);
     }
 
-    /**
-     * Undo the last command on the active tab's history. Commands revert
-     * through the stores, which emit events that repaint the canvas and
-     * refresh the panels — no manual component pokes needed.
-     */
-    async undo() {
+    /** Undo the last command on the active tab's history. */
+    async undo(): Promise<void> {
         const history = this.context?.history;
         if (!history) return;
         try {
@@ -780,10 +685,8 @@ export class Application {
         }
     }
 
-    /**
-     * Redo the next command on the active tab's history.
-     */
-    async redo() {
+    /** Redo the next command on the active tab's history. */
+    async redo(): Promise<void> {
         const history = this.context?.history;
         if (!history) return;
         try {
@@ -793,10 +696,8 @@ export class Application {
         }
     }
 
-    /**
-     * Delete the current selection via an undoable RemoveShapesCommand.
-     */
-    deleteSelectedShape() {
+    /** Delete the current selection via an undoable RemoveShapesCommand. */
+    deleteSelectedShape(): void {
         const scene = this.context?.scene;
         if (!scene) return;
 
@@ -807,17 +708,14 @@ export class Application {
             : (singleSelected ? [singleSelected.id] : []);
 
         if (idsToDelete.length > 0) {
-            this.context.history.execute(new RemoveShapesCommand(idsToDelete));
+            this.context!.history.execute(new RemoveShapesCommand(idsToDelete));
         }
     }
 
-    /**
-     * Reflect the active tab's undo/redo availability on the toolbar buttons.
-     * Driven by HISTORY_CHANGED (and tab switches) — no polling.
-     */
-    updateUndoRedoUI() {
-        const btnUndo = document.getElementById('btn-undo');
-        const btnRedo = document.getElementById('btn-redo');
+    /** Reflect the active tab's undo/redo availability on the toolbar buttons. */
+    updateUndoRedoUI(): void {
+        const btnUndo = document.getElementById('btn-undo') as HTMLButtonElement | null;
+        const btnRedo = document.getElementById('btn-redo') as HTMLButtonElement | null;
         const history = this.context?.history;
         if (!history) return;
 
