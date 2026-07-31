@@ -94,7 +94,7 @@ export class BindingRegistry {
      *     new FunctionBinding(json.functionName, json.args)
      * );
      */
-    static register(type, factoryFunction) {
+    static register(type: string, factoryFunction: Function): void {
         if (!type || typeof type !== 'string') {
             throw new Error('Type must be a non-empty string');
         }
@@ -114,7 +114,7 @@ export class BindingRegistry {
      * Unregister a binding type (useful for testing)
      * @param {string} type - The binding type key to remove.
      */
-    static unregister(type) {
+    static unregister(type: string): void {
         this.#registry.delete(type);
     }
     
@@ -127,7 +127,7 @@ export class BindingRegistry {
      * @param {string} type - The binding type key to query.
      * @returns {boolean} {@code true} if a factory exists for {@link type}.
      */
-    static isRegistered(type) {
+    static isRegistered(type: string): boolean {
         return this.#registry.has(type);
     }
     
@@ -140,7 +140,7 @@ export class BindingRegistry {
      * Get available binding types
      * @returns {Array<string>} An array of registered type identifiers.
      */
-    static getAvailableTypes() {
+    static getAvailableTypes(): Array<string> {
         return Array.from(this.#registry.keys());
     }
     
@@ -162,12 +162,12 @@ export class BindingRegistry {
      * @throws {Error} If {@link json} is falsy, has no {@code type} field, or
      *   the type is not registered.
      */
-    static createFromJSON(json) {
+    static createFromJSON(json: any): any{
         if (!json || !json.type) {
             throw new Error('Invalid binding JSON: type is required');
         }
         
-        const factoryFunction = this.#registry.get(json.type);
+        const factoryFunction: any = this.#registry.get(json.type);
         
         if (!factoryFunction) {
             const available = Array.from(this.#registry.keys()).join(', ');
@@ -196,6 +196,6 @@ export class BindingRegistry {
  *   as produced by {@link Binding#toJSON}.
  * @returns {Binding} The deserialized Binding instance.
  */
-export function createBindingFromJSON(json) {
+export function createBindingFromJSON(json: any): any {
     return BindingRegistry.createFromJSON(json);
 }

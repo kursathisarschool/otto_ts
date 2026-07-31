@@ -20,9 +20,10 @@
  *
  * @module models/shapes/Arc
  */
-
-import { Shape } from './Shape.js';
+import { type Schema } from './schema.js';
+import { Bounds, Shape } from './Shape.js';
 import {
+    BoundingBox,
     Color as GeoColor,
     Fill as GeoFill,
     Path as GeoPath,
@@ -39,7 +40,7 @@ import {
  * @constant
  * @private
  */
-const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
+const HIT_TEST_FILL: GeoFill = new GeoFill(new GeoColor(0, 0, 0, 1));
 
 /**
  * Circular arc defined by centre, radius, and two angles (in degrees).
@@ -52,7 +53,7 @@ const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
 export class Arc extends Shape {
     static type = 'arc';
 
-    static SCHEMA = {
+    static SCHEMA: Schema = {
         centerX: { type: 'number', default: (o) => o.position?.x ?? 0, bindable: true, translate: 'x', label: 'Center X' },
         centerY: { type: 'number', default: (o) => o.position?.y ?? 0, bindable: true, translate: 'y', label: 'Center Y' },
         radius: { type: 'number', default: 25, bindable: true, min: 0, label: 'Radius' },
@@ -69,7 +70,7 @@ export class Arc extends Shape {
      *
      * @returns {{x: number, y: number, width: number, height: number}}
      */
-    getBounds() {
+    getBounds(): Bounds {
         const path = this.toGeometryPath();
         const box = path.tightBoundingBox() || path.looseBoundingBox();
         if (!box) {
@@ -95,7 +96,7 @@ export class Arc extends Shape {
      * @param {number} y - Y coordinate to test.
      * @returns {boolean} True if the point falls within the arc's filled region.
      */
-    containsPoint(x, y) {
+    containsPoint(x: number, y: number): boolean {
         const path = this.toGeometryPath();
         path.assignFill(HIT_TEST_FILL);
         return styleContainsPoint(path, new GeoVec(x, y));
@@ -105,7 +106,7 @@ export class Arc extends Shape {
      * Render the arc curve onto the canvas.
      * @param {CanvasRenderingContext2D} ctx - The Otto canvas 2D context.
      */
-    render(ctx) {
+    render(ctx: CanvasRenderingContext2D): void {
         const path = this.toGeometryPath();
         ctx.beginPath();
         path.toCanvasPath(ctx);
@@ -124,10 +125,10 @@ export class Arc extends Shape {
      *
      * @returns {import('../../geometry/Path.js').Path} An open 33-point GeoPath.
      */
-    toGeometryPath() {
-        const segments = 32;
-        const angleSpan = this.endAngle - this.startAngle;
-        const points = [];
+    toGeometryPath(): GeoPath {
+        const segments:number = 32;
+        const angleSpan: number = this.endAngle - this.startAngle;
+        const points: any[] = [];
 
         for (let i = 0; i <= segments; i++) {
             const angle = this.startAngle + (i / segments) * angleSpan;

@@ -25,21 +25,16 @@
  * Parameter class
  */
 export class Parameter {
-    /**
-     * @param {string} id        - Unique identifier for this parameter within
-     *   its scene.  Used as the lookup key in ParameterStore and referenced by
-     *   {@link ParameterBinding}.
-     * @param {string} name      - Human-readable name displayed on the slider
-     *   label.  Also serves as the variable name in
-     *   {@link ExpressionBinding} expressions (e.g. {@code "radius * 2"}).
-     * @param {number} [value=0] - Initial value.  Not clamped here; use
-     *   {@link Parameter#setValue} for clamped writes.
-     * @param {number} [min=-Infinity] - Lower bound of the allowed range.
-     * @param {number} [max=Infinity]  - Upper bound of the allowed range.
-     * @param {number} [step=0]        - Discrete step size.  A value of
-     *   {@code 0} means continuous (no rounding is applied).
-     */
-    constructor(id, name, value = 0, min = -Infinity, max = Infinity, step = 0) {
+    
+    id: string;
+    name: string;
+    value: number;
+    min: number;
+    max: number;
+    step: number;
+
+
+    constructor(id: string, name: string, value: number = 0, min: number = -Infinity, max:  number = Infinity, step: number = 0) {
         this.id = id;
         this.name = name;
         this.value = value;
@@ -55,7 +50,7 @@ export class Parameter {
      * Get the current value
      * @returns {number} The current value of this parameter.
      */
-    getValue() {
+    getValue(): number {
         return this.value;
     }
 
@@ -73,7 +68,7 @@ export class Parameter {
      * @param {number} newValue - The desired value (will be clamped and
      *   optionally rounded before being stored).
      */
-    setValue(newValue) {
+    setValue(newValue: any): void {
         // Clamp value to min/max range
         this.value = Math.max(this.min, Math.min(this.max, newValue));
         // Round to nearest step if step is defined
@@ -90,7 +85,7 @@ export class Parameter {
      * Serialize to JSON
      * @returns {{ id: string, name: string, value: number, min: number, max: number, step: number }}
      */
-    toJSON() {
+    toJSON(): { id: string, name: string, value: number, min: number, max: number, step: number } {
         return {
             id: this.id,
             name: this.name,
@@ -111,7 +106,7 @@ export class Parameter {
      * @param {Object} json - A plain object with id, name, value, min, max, step.
      * @returns {Parameter} A new Parameter instance matching the serialized state.
      */
-    static fromJSON(json) {
+    static fromJSON(json:any): Parameter {
         return new Parameter(
             json.id,
             json.name,
@@ -145,12 +140,14 @@ export class Parameter {
  * ParameterBuilder - Builder Pattern for creating Parameters
  */
 export class ParameterBuilder {
-    /**
-     * Initialise all fields to their default values.  These defaults mirror
-     * the {@link Parameter} constructor defaults so that a builder used
-     * without calling every setter still produces a valid parameter (aside
-     * from the mandatory {@link ParameterBuilder#name}).
-     */
+  
+    id: string | null;
+    name: string | null;
+    value: number;
+    min: number;
+    max: number;
+    step: number;
+
     constructor() {
         this.id = null;
         this.name = null;
@@ -169,7 +166,7 @@ export class ParameterBuilder {
      * @param {string} id - The explicit unique identifier to use.
      * @returns {ParameterBuilder} {@code this}, for chaining.
      */
-    withId(id) {
+    withId(id: string): this {
         this.id = id;
         return this;
     }
@@ -184,7 +181,7 @@ export class ParameterBuilder {
      * @param {string} name - The display / expression-variable name.
      * @returns {ParameterBuilder} {@code this}, for chaining.
      */
-    withName(name) {
+    withName(name: string): this {
         this.name = name;
         return this;
     }
@@ -198,7 +195,7 @@ export class ParameterBuilder {
      * @param {number} value - The starting numeric value.
      * @returns {ParameterBuilder} {@code this}, for chaining.
      */
-    withValue(value) {
+    withValue(value: number): this {
         this.value = value;
         return this;
     }
@@ -212,7 +209,7 @@ export class ParameterBuilder {
      * @param {number} max - Inclusive upper bound.
      * @returns {ParameterBuilder} {@code this}, for chaining.
      */
-    withRange(min, max) {
+    withRange(min: number, max: number): this {
         this.min = min;
         this.max = max;
         return this;
@@ -227,7 +224,7 @@ export class ParameterBuilder {
      * @param {number} step - Discrete step size, or {@code 0} for continuous.
      * @returns {ParameterBuilder} {@code this}, for chaining.
      */
-    withStep(step) {
+    withStep(step: number): this {
         this.step = step;
         return this;
     }
@@ -247,7 +244,7 @@ export class ParameterBuilder {
      * @returns {Parameter} A fully initialised Parameter instance.
      * @throws {Error} If {@link ParameterBuilder#name} was never set.
      */
-    build() {
+    build(): Parameter {
         if (!this.id) {
             // Generate ID if not provided
             this.id = `param-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;

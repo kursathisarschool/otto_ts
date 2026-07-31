@@ -14,9 +14,10 @@
  *
  * @module models/shapes/Cross
  */
-
-import { Shape } from './Shape.js';
+import { type Schema } from './schema.js';
+import { Bounds, Shape } from './Shape.js';
 import {
+    BoundingBox,
     Color as GeoColor,
     Fill as GeoFill,
     Path as GeoPath,
@@ -30,7 +31,7 @@ import {
  * @constant
  * @private
  */
-const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
+const HIT_TEST_FILL: GeoFill = new GeoFill(new GeoColor(0, 0, 0, 1));
 
 /**
  * Plus-sign / cross shape.
@@ -42,7 +43,7 @@ const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
 export class Cross extends Shape {
     static type = 'cross';
 
-    static SCHEMA = {
+    static SCHEMA: Schema = {
         centerX: { type: 'number', default: (o) => o.position?.x ?? 0, bindable: true, translate: 'x', label: 'Center X' },
         centerY: { type: 'number', default: (o) => o.position?.y ?? 0, bindable: true, translate: 'y', label: 'Center Y' },
         width: { type: 'number', default: 50, bindable: true, min: 0, label: 'Width' },
@@ -53,9 +54,9 @@ export class Cross extends Shape {
      * Compute the AABB by delegating to the geometry path.
      * @returns {{x: number, y: number, width: number, height: number}}
      */
-    getBounds() {
-        const path = this.toGeometryPath();
-        const box = path.tightBoundingBox() || path.looseBoundingBox();
+    getBounds(): {x: number, y: number, width: number, height: number} {
+        const path: GeoPath = this.toGeometryPath();
+        const box: BoundingBox = path.tightBoundingBox() || path.looseBoundingBox();
         if (!box) {
             return { x: 0, y: 0, width: 0, height: 0 };
         }
@@ -74,7 +75,7 @@ export class Cross extends Shape {
      * @param {number} y - Y coordinate to test.
      * @returns {boolean} True if the point is inside or on the cross boundary.
      */
-    containsPoint(x, y) {
+    containsPoint(x: number, y: number): boolean {
         const path = this.toGeometryPath();
         path.assignFill(HIT_TEST_FILL);
         return styleContainsPoint(path, new GeoVec(x, y));
@@ -84,8 +85,8 @@ export class Cross extends Shape {
      * Render the cross outline onto the canvas.
      * @param {CanvasRenderingContext2D} ctx - The Otto canvas 2D context.
      */
-    render(ctx) {
-        const path = this.toGeometryPath();
+    render(ctx: CanvasRenderingContext2D): void {
+        const path: GeoPath = this.toGeometryPath();
         ctx.beginPath();
         path.toCanvasPath(ctx);
         ctx.stroke();
@@ -116,13 +117,13 @@ export class Cross extends Shape {
      *
      * @returns {import('../../geometry/Path.js').Path} A closed 12-vertex GeoPath.
      */
-    toGeometryPath() {
+    toGeometryPath(): GeoPath {
         const w = this.width / 2;
         const t = this.thickness / 2;
         const cx = this.centerX;
         const cy = this.centerY;
 
-        const points = [
+        const points: GeoVec[] = [
             new GeoVec(cx - t, cy - w),
             new GeoVec(cx + t, cy - w),
             new GeoVec(cx + t, cy - t),
@@ -149,7 +150,7 @@ export class Cross extends Shape {
      *
      * @returns {Array<{x: number, y: number}>} Ordered 12-vertex list for the cross outline.
      */
-    getPoints() {
+    getPoints(): Array<{x: number, y: number}> {
         const w = this.width / 2;
         const t = this.thickness / 2;
         const cx = this.centerX;

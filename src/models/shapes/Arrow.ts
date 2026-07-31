@@ -1,4 +1,5 @@
-import { Shape } from './Shape.js';
+import { type Schema } from './schema.js';
+import { Bounds, Shape } from './Shape.js';
 import {
     Color as GeoColor,
     Fill as GeoFill,
@@ -7,7 +8,7 @@ import {
     styleContainsPoint
 } from '../../geometry/index.js';
 
-const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
+const HIT_TEST_FILL: GeoFill = new GeoFill(new GeoColor(0, 0, 0, 1));
 
 /**
  * Arrow shape implementation
@@ -16,7 +17,7 @@ const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
 export class Arrow extends Shape {
     static type = 'arrow';
 
-    static SCHEMA = {
+    static SCHEMA: Schema = {
         x: { type: 'number', default: (o) => o.position?.x ?? 0, bindable: true, translate: 'x', label: 'X' },
         y: { type: 'number', default: (o) => o.position?.y ?? 0, bindable: true, translate: 'y', label: 'Y' },
         length: { type: 'number', default: 50, bindable: true, min: 0, label: 'Length' },
@@ -24,7 +25,7 @@ export class Arrow extends Shape {
         headLength: { type: 'number', default: 12.5, bindable: true, min: 0, label: 'Head Length', aliases: ['head_length'] }
     };
 
-    getBounds() {
+    getBounds(): Bounds {
         const path = this.toGeometryPath();
         const box = path.tightBoundingBox() || path.looseBoundingBox();
         if (!box) {
@@ -38,31 +39,34 @@ export class Arrow extends Shape {
         };
     }
     
-    containsPoint(px, py) {
+    containsPoint(px: number, py: number): boolean {
         const path = this.toGeometryPath();
         path.assignFill(HIT_TEST_FILL);
         return styleContainsPoint(path, new GeoVec(px, py));
     }
     
-    render(ctx) {
+    render(ctx: CanvasRenderingContext2D): void {
         const path = this.toGeometryPath();
         ctx.beginPath();
         path.toCanvasPath(ctx);
         ctx.stroke();
     }
 
-    toGeometryPath() {
+    toGeometryPath(): GeoPath {
         return GeoPath.fromPoints(this.getPoints().map(p => new GeoVec(p.x, p.y)), true);
     }
 
-    getPoints() {
-        const sx = this.x;
-        const sy = this.y;
+    getPoints(): {
+        x: any;
+        y: any;
+    }[] {
+        const sx: number = this.x;
+        const sy: number = this.y;
 
-        const headWidth = Math.max(2, this.headWidth);
-        const headLength = Math.max(2, Math.min(this.headLength, this.length));
-        const shaftWidth = Math.max(2, Math.min(headWidth * 0.3, headWidth - 2));
-        const shaftEndX = sx + this.length - headLength;
+        const headWidth: number = Math.max(2, this.headWidth);
+        const headLength: number = Math.max(2, Math.min(this.headLength, this.length));
+        const shaftWidth: number = Math.max(2, Math.min(headWidth * 0.3, headWidth - 2));
+        const shaftEndX: number = sx + this.length - headLength;
 
         return [
             // Tail cap (thin rectangle end)

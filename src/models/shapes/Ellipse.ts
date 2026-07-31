@@ -19,9 +19,11 @@
  *
  * @module models/shapes/Ellipse
  */
+import { type Schema } from './schema.js';
 
 import { Shape } from './Shape.js';
 import {
+    BoundingBox,
     Anchor as GeoAnchor,
     Color as GeoColor,
     Fill as GeoFill,
@@ -36,7 +38,7 @@ import {
  * @constant
  * @private
  */
-const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
+const HIT_TEST_FILL: GeoFill = new GeoFill(new GeoColor(0, 0, 0, 1));
 
 /**
  * Ellipse shape -- an oval with independently controllable horizontal and vertical radii.
@@ -48,7 +50,7 @@ const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
 export class Ellipse extends Shape {
     static type = 'ellipse';
 
-    static SCHEMA = {
+    static SCHEMA: Schema = {
         centerX: { type: 'number', default: (o) => o.position?.x ?? 0, bindable: true, translate: 'x', label: 'Center X' },
         centerY: { type: 'number', default: (o) => o.position?.y ?? 0, bindable: true, translate: 'y', label: 'Center Y' },
         radiusX: { type: 'number', default: 30, bindable: true, min: 0, label: 'Radius X' },
@@ -63,9 +65,9 @@ export class Ellipse extends Shape {
      *
      * @returns {{x: number, y: number, width: number, height: number}}
      */
-    getBounds() {
-        const path = this.toGeometryPath();
-        const box = path.tightBoundingBox() || path.looseBoundingBox();
+    getBounds(): {x: number, y: number, width: number, height: number} {
+        const path: GeoPath = this.toGeometryPath();
+        const box: BoundingBox = path.tightBoundingBox() || path.looseBoundingBox();
         if (!box) {
             return { x: 0, y: 0, width: 0, height: 0 };
         }
@@ -85,8 +87,8 @@ export class Ellipse extends Shape {
      * @param {number} y - Y coordinate to test.
      * @returns {boolean} True if the point is inside or on the ellipse boundary.
      */
-    containsPoint(x, y) {
-        const path = this.toGeometryPath();
+    containsPoint(x: number, y: number) : boolean{
+        const path: GeoPath = this.toGeometryPath();
         path.assignFill(HIT_TEST_FILL);
         return styleContainsPoint(path, new GeoVec(x, y));
     }
@@ -95,8 +97,8 @@ export class Ellipse extends Shape {
      * Render the ellipse outline onto the canvas.
      * @param {CanvasRenderingContext2D} ctx - The Otto canvas 2D context.
      */
-    render(ctx) {
-        const path = this.toGeometryPath();
+    render(ctx: CanvasRenderingContext2D): void {
+        const path: GeoPath = this.toGeometryPath();
         ctx.beginPath();
         path.toCanvasPath(ctx);
         ctx.stroke();
@@ -118,10 +120,10 @@ export class Ellipse extends Shape {
      *
      * @returns {import('../../geometry/Path.js').Path} A closed 64-vertex GeoPath.
      */
-    toGeometryPath() {
+    toGeometryPath(): GeoPath {
         // Create ellipse by sampling points
-        const segments = 64;
-        const points = [];
+        const segments: number = 64;
+        const points: any[] = [];
         for (let i = 0; i < segments; i++) {
             const angle = (i / segments) * Math.PI * 2;
             points.push(new GeoVec(

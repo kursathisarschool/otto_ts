@@ -29,7 +29,7 @@
  *
  * @module models/shapes/Donut
  */
-
+import { type Schema } from './schema.js';
 import { Shape } from './Shape.js';
 import {
     Color as GeoColor,
@@ -49,7 +49,7 @@ import {
  * @constant
  * @private
  */
-const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
+const HIT_TEST_FILL: GeoFill = new GeoFill(new GeoColor(0, 0, 0, 1));
 
 /**
  * Annular ring (donut / washer) shape.
@@ -62,7 +62,7 @@ const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
 export class Donut extends Shape {
     static type = 'donut';
 
-    static SCHEMA = {
+    static SCHEMA: Schema = {
         centerX: { type: 'number', default: (o) => o.position?.x ?? 0, bindable: true, translate: 'x', label: 'Center X' },
         centerY: { type: 'number', default: (o) => o.position?.y ?? 0, bindable: true, translate: 'y', label: 'Center Y' },
         outerRadius: { type: 'number', default: 25, bindable: true, min: 0, label: 'Outer Radius', aliases: ['outer_radius'] },
@@ -76,7 +76,12 @@ export class Donut extends Shape {
      *
      * @returns {{x: number, y: number, width: number, height: number}}
      */
-    getBounds() {
+    getBounds(): {
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    } {
         return {
             x: this.centerX - this.outerRadius,
             y: this.centerY - this.outerRadius,
@@ -97,10 +102,10 @@ export class Donut extends Shape {
      * @param {number} y - Y coordinate to test.
      * @returns {boolean} True if the point is in the ring (not in the hole, not outside).
      */
-    containsPoint(x, y) {
-        const dx = x - this.centerX;
-        const dy = y - this.centerY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+    containsPoint(x: number, y: number): boolean {
+        const dx: number = x - this.centerX;
+        const dy: number = y - this.centerY;
+        const dist: number = Math.sqrt(dx * dx + dy * dy);
         return dist <= this.outerRadius && dist >= this.innerRadius;
     }
 
@@ -117,7 +122,7 @@ export class Donut extends Shape {
      *
      * @param {CanvasRenderingContext2D} ctx - The Otto canvas 2D context.
      */
-    render(ctx) {
+    render(ctx: CanvasRenderingContext2D) {
         ctx.beginPath();
         ctx.arc(this.centerX, this.centerY, this.outerRadius, 0, Math.PI * 2);
         ctx.arc(this.centerX, this.centerY, this.innerRadius, 0, Math.PI * 2, true);
@@ -141,9 +146,9 @@ export class Donut extends Shape {
      *
      * @returns {import('../../geometry/Path.js').Path} A closed winding-rule donut GeoPath.
      */
-    toGeometryPath() {
-        const segments = 64;
-        const points = [];
+    toGeometryPath(): GeoPath {
+        const segments: number = 64;
+        const points: any[] = [];
 
         // Outer circle
         for (let i = 0; i <= segments; i++) {
@@ -181,11 +186,11 @@ export class Donut extends Shape {
      *        produce smoother curves at the cost of more vertices in boolean operations.
      * @returns {Array<{x: number, y: number}>} Ordered vertex list for the donut outline.
      */
-    getPoints(segments = 64) {
-        const points = [];
+    getPoints(segments: number = 64): Array<{x: number, y: number}> {
+        const points: any[] = [];
 
         for (let i = 0; i <= segments; i++) {
-            const angle = (i / segments) * Math.PI * 2;
+            const angle: number = (i / segments) * Math.PI * 2;
             points.push({
                 x: this.centerX + Math.cos(angle) * this.outerRadius,
                 y: this.centerY + Math.sin(angle) * this.outerRadius
@@ -198,7 +203,7 @@ export class Donut extends Shape {
         });
 
         for (let i = segments; i >= 0; i--) {
-            const angle = (i / segments) * Math.PI * 2;
+            const angle: number = (i / segments) * Math.PI * 2;
             points.push({
                 x: this.centerX + Math.cos(angle) * this.innerRadius,
                 y: this.centerY + Math.sin(angle) * this.innerRadius
