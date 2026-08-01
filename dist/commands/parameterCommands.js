@@ -1,10 +1,5 @@
 /**
- * @fileoverview Parameter commands — undoable mutations of the parameter
- * store: add, remove, value changes (coalescing so slider drags are one
- * history entry), and metadata edits (name/min/max/step — which the old
- * ParametersMenu silently mutated on the model, invisible to undo and to
- * every event subscriber).
- *
+ * @fileoverview Parameter commands.
  * @module commands/parameterCommands
  */
 import { Command } from './Command.js';
@@ -12,9 +7,6 @@ import { Parameter } from '../models/Parameter.js';
 import EventBus, { EVENTS } from '../events/EventBus.js';
 const COALESCE_WINDOW_MS = 1200;
 export class AddParameterCommand extends Command {
-    /**
-     * @param {import('../models/Parameter.js').Parameter} parameter
-     */
     constructor(parameter) {
         super(`Add parameter ${parameter.name}`);
         this.paramJSON = parameter.toJSON();
@@ -30,9 +22,6 @@ export class AddParameterCommand extends Command {
     }
 }
 export class RemoveParameterCommand extends Command {
-    /**
-     * @param {string} parameterId
-     */
     constructor(parameterId) {
         super('Remove parameter');
         this.parameterId = parameterId;
@@ -52,14 +41,9 @@ export class RemoveParameterCommand extends Command {
     }
 }
 /**
- * Change a parameter's value. Rapid changes to the same parameter coalesce,
- * so dragging a slider produces ONE undo step back to the pre-drag value.
+ * Change a parameter's value. Rapid changes to the same parameter coalesce.
  */
 export class SetParameterValueCommand extends Command {
-    /**
-     * @param {string} parameterId
-     * @param {number} value
-     */
     constructor(parameterId, value) {
         super('Change parameter');
         this.parameterId = parameterId;
@@ -93,15 +77,9 @@ export class SetParameterValueCommand extends Command {
     }
 }
 /**
- * Patch parameter metadata (name, min, max, step). Emits PARAM_UPDATED so
- * bound UI and the autosave observer notice — the old direct mutations
- * emitted nothing.
+ * Patch parameter metadata (name, min, max, step).
  */
 export class UpdateParameterMetaCommand extends Command {
-    /**
-     * @param {string} parameterId
-     * @param {{name?: string, min?: number, max?: number, step?: number}} patch
-     */
     constructor(parameterId, patch) {
         super('Edit parameter');
         this.parameterId = parameterId;

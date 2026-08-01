@@ -6,9 +6,8 @@
 import { Anchor } from './Anchor.js';
 import { BoundingBox } from './BoundingBox.js';
 import { clamp, tan } from './math.js';
-import { AffineMatrix } from './Matrix.js';
 import { Geometry } from './Geometry.js';
-import { cubicFromSegment, cubicsBySplittingCubicAtTime, isSegmentLinear, lineFromSegment, partialSegmentLength, pointOnCubicAtTime, positionAndTimeAtClosestPointOnCubic, positionAndTimeAtClosestPointOnLine, segmentLength, lineLineIntersections, } from './Segment.js';
+import { cubicFromSegment, cubicsBySplittingCubicAtTime, isSegmentLinear, lineFromSegment, partialSegmentLength, pointOnCubicAtTime, positionAndTimeAtClosestPointOnCubic, positionAndTimeAtClosestPointOnLine, segmentLength, } from './Segment.js';
 import { Fill, Stroke } from './Style.js';
 import { pairs, rotateArray } from './util.js';
 import { Vec } from './Vec.js';
@@ -18,73 +17,38 @@ import { computeTightBoundingBox, getPathKit } from './pathkit.js';
  * Path class representing a series of anchors with optional curves.
  *
  * @example
- * // Simple triangle
  * const triangle = Path.fromPoints([
  *     new Vec(0, 0),
  *     new Vec(100, 0),
  *     new Vec(50, 100)
  * ], true);
- *
- * @example
- * // Path with curves
- * const path = new Path([
- *     new Anchor(new Vec(0, 0), new Vec(), new Vec(20, 0)),
- *     new Anchor(new Vec(100, 0), new Vec(-20, 0), new Vec())
- * ]);
- *
- * @extends Geometry
  */
 export class Path extends Geometry {
-    /**
-     * Create a path.
-     * @param {Anchor[]} [anchors=[]] - Array of anchors
-     * @param {boolean} [closed=false] - Whether path is closed
-     * @param {Stroke} [stroke] - Stroke style
-     * @param {Fill} [fill] - Fill style
-     */
     constructor(anchors = [], closed = false, stroke, fill) {
         super();
-        /** @type {Anchor[]} */
         this.anchors = anchors;
-        /** @type {boolean} */
         this.closed = closed;
-        /** @type {Stroke|undefined} */
         this.stroke = stroke;
-        /** @type {Fill|undefined} */
         this.fill = fill;
     }
-    /**
-     * Create a copy of this path.
-     * @returns {Path}
-     */
+    /** Create a copy of this path. */
     clone() {
         return new Path(this.anchors.map((anchor) => anchor.clone()), this.closed, this.stroke?.clone(), this.fill?.clone());
     }
-    /**
-     * Check if this path is valid.
-     * @returns {boolean}
-     */
+    /** Check if this path is valid. */
     isValid() {
         return (Array.isArray(this.anchors) &&
             this.anchors.every(Anchor.isValid) &&
             (this.stroke === undefined || Stroke.isValid(this.stroke)) &&
             (this.fill === undefined || Fill.isValid(this.fill)));
     }
-    /**
-     * Apply an affine transformation.
-     * @param {AffineMatrix} affineMatrix
-     * @returns {Path} this
-     */
+    /** Apply an affine transformation. */
     affineTransform(affineMatrix) {
         for (let anchor of this.anchors)
             anchor.affineTransform(affineMatrix);
         return this;
     }
-    /**
-     * Apply an affine transformation without translation.
-     * @param {AffineMatrix} affineMatrix
-     * @returns {Path} this
-     */
+    /** Apply an affine transformation without translation. */
     affineTransformWithoutTranslation(affineMatrix) {
         for (let anchor of this.anchors)
             anchor.affineTransformWithoutTranslation(affineMatrix);
@@ -93,87 +57,42 @@ export class Path extends Geometry {
     // =========================================================================
     // Collection methods
     // =========================================================================
-    /**
-     * Get all paths (returns self in array).
-     * @returns {Path[]}
-     */
     allPaths() {
         return [this];
     }
-    /**
-     * Get all anchors.
-     * @returns {Anchor[]}
-     */
     allAnchors() {
         return [...this.anchors];
     }
-    /**
-     * Get all shapes and orphaned paths (returns self).
-     * @returns {Path[]}
-     */
     allShapesAndOrphanedPaths() {
         return [this];
     }
-    /**
-     * Get all intersectable geometry.
-     * @returns {Path[]}
-     */
     allIntersectables() {
         return [this];
     }
     // =========================================================================
     // Style methods
     // =========================================================================
-    /**
-     * Assign a fill style.
-     * @param {Fill} fill
-     * @returns {Path} this
-     */
     assignFill(fill) {
         this.fill = fill.clone();
         return this;
     }
-    /**
-     * Remove fill style.
-     * @returns {Path} this
-     */
     removeFill() {
         this.fill = undefined;
         return this;
     }
-    /**
-     * Assign a stroke style.
-     * @param {Stroke} stroke
-     * @returns {Path} this
-     */
     assignStroke(stroke) {
         this.stroke = stroke.clone();
         return this;
     }
-    /**
-     * Remove stroke style.
-     * @returns {Path} this
-     */
     removeStroke() {
         this.stroke = undefined;
         return this;
     }
-    /**
-     * Assign both fill and stroke.
-     * @param {Fill} fill
-     * @param {Stroke} stroke
-     * @returns {Path} this
-     */
     assignStyle(fill, stroke) {
         this.stroke = stroke?.clone();
         this.fill = fill?.clone();
         return this;
     }
-    /**
-     * Copy style from another geometry.
-     * @param {Geometry} item
-     * @returns {Path} this
-     */
     copyStyle(item) {
         if (item instanceof Path) {
             this.stroke = item.stroke?.clone();
@@ -181,11 +100,6 @@ export class Path extends Geometry {
         }
         return this;
     }
-    /**
-     * Scale stroke width.
-     * @param {number} scaleFactor
-     * @returns {Path} this
-     */
     scaleStroke(scaleFactor) {
         if (this.stroke && !this.stroke.hairline) {
             this.stroke.width *= scaleFactor;
@@ -195,52 +109,24 @@ export class Path extends Geometry {
     // =========================================================================
     // Anchor access
     // =========================================================================
-    /**
-     * Get first anchor.
-     * @returns {Anchor|undefined}
-     */
     firstAnchor() {
         return this.anchors[0];
     }
-    /**
-     * Get last anchor.
-     * @returns {Anchor|undefined}
-     */
     lastAnchor() {
         return this.anchors[this.anchors.length - 1];
     }
-    /**
-     * Get segment at index as a new Path.
-     * @param {number} index
-     * @returns {Path}
-     */
     segmentAtIndex(index) {
         return new Path(this.anchors.slice(index, index + 2));
     }
-    /**
-     * Get all segments as array of Paths.
-     * @returns {Path[]}
-     */
     segments() {
         return pairs(this.anchors, this.closed).map((anchors) => new Path(anchors));
     }
     // =========================================================================
     // SVG
     // =========================================================================
-    /**
-     * Convert to SVG element string.
-     * @param {import('./Geometry.js').ExportOptions} [options]
-     * @returns {string}
-     */
     toSVGString(options) {
         return pathOrShapeToSVGString(this, options);
     }
-    /**
-     * Convert to SVG path string.
-     * @param {Object} [options]
-     * @param {number} [options.maxPrecision]
-     * @returns {string}
-     */
     toSVGPathString(options) {
         const toString = (x) => {
             if (options?.maxPrecision !== undefined) {
@@ -286,10 +172,6 @@ export class Path extends Geometry {
     // =========================================================================
     // Canvas
     // =========================================================================
-    /**
-     * Append path commands to a canvas context.
-     * @param {CanvasRenderingContext2D} ctx
-     */
     toCanvasPath(ctx) {
         if (!ctx || this.anchors.length === 0)
             return;
@@ -318,10 +200,6 @@ export class Path extends Geometry {
     // =========================================================================
     // Bounding Box
     // =========================================================================
-    /**
-     * Get loose bounding box (includes control points).
-     * @returns {BoundingBox|undefined}
-     */
     looseBoundingBox() {
         const { anchors, closed } = this;
         if (anchors.length === 0)
@@ -350,11 +228,6 @@ export class Path extends Geometry {
         }
         return box;
     }
-    /**
-     * Get tight bounding box (actual curve bounds).
-     * For now, uses loose bounding box as approximation.
-     * @returns {BoundingBox|undefined}
-     */
     tightBoundingBox() {
         if (this.anchors.length === 1) {
             return this.anchors[0].tightBoundingBox();
@@ -365,44 +238,23 @@ export class Path extends Geometry {
         }
         return this.looseBoundingBox();
     }
-    /**
-     * Check if contained by bounding box.
-     * @param {BoundingBox} box
-     * @returns {boolean}
-     */
     isContainedByBoundingBox(box) {
         const tight = this.tightBoundingBox();
         return tight ? box.containsBoundingBox(tight) : false;
     }
-    /**
-     * Check if intersected by bounding box.
-     * @param {BoundingBox} box
-     * @returns {boolean}
-     */
     isIntersectedByBoundingBox(box) {
         const looseBounds = this.looseBoundingBox();
         if (looseBounds?.overlapsBoundingBox(box)) {
-            // Simple check: see if bounding box edges intersect path
-            // Full implementation would use path intersections
             return true;
         }
         return false;
     }
-    /**
-     * Check if overlapped by bounding box.
-     * @param {BoundingBox} box
-     * @returns {boolean}
-     */
     isOverlappedByBoundingBox(box) {
         return this.isContainedByBoundingBox(box) || this.isIntersectedByBoundingBox(box);
     }
     // =========================================================================
     // Direction
     // =========================================================================
-    /**
-     * Reverse the path direction.
-     * @returns {Path} this
-     */
     reverse() {
         for (let anchor of this.anchors) {
             anchor.reverse();
@@ -413,10 +265,6 @@ export class Path extends Geometry {
     // =========================================================================
     // Length
     // =========================================================================
-    /**
-     * Get total path length.
-     * @returns {number}
-     */
     length() {
         let length = 0;
         for (let segment of pairs(this.anchors, this.closed)) {
@@ -427,11 +275,6 @@ export class Path extends Geometry {
     // =========================================================================
     // Time-based Operations
     // =========================================================================
-    /**
-     * Get time (parameter) at a given distance along path.
-     * @param {number} distance
-     * @returns {number}
-     */
     timeAtDistance(distance) {
         const { anchors, closed } = this;
         let t = 0;
@@ -446,11 +289,6 @@ export class Path extends Geometry {
         }
         return closed ? anchors.length : anchors.length - 1;
     }
-    /**
-     * Get distance at a given time (parameter).
-     * @param {number} time
-     * @returns {number}
-     */
     distanceAtTime(time) {
         if (time <= 0)
             return 0;
@@ -471,11 +309,6 @@ export class Path extends Geometry {
         }
         return distance;
     }
-    /**
-     * Get position at a given time (parameter).
-     * @param {number} time
-     * @returns {Vec}
-     */
     positionAtTime(time) {
         const { anchors, closed } = this;
         if (anchors.length === 0)
@@ -502,11 +335,6 @@ export class Path extends Geometry {
             return pointOnCubicAtTime(new Vec(), cubic, segmentTime);
         }
     }
-    /**
-     * Get derivative (velocity) at a given time.
-     * @param {number} time
-     * @returns {Vec}
-     */
     derivativeAtTime(time) {
         const { anchors, closed } = this;
         if (anchors.length < 2)
@@ -546,40 +374,23 @@ export class Path extends Geometry {
             return nextAnchor.position.clone().sub(anchor.position).normalize();
         }
         else {
-            // For cubic, compute derivative at segmentTime
             const segmentTime = time - anchorIndex;
             const cubic = cubicFromSegment(segment);
-            // Derivative of cubic bezier
             const t = segmentTime;
             const mt = 1 - t;
             const [p0, p1, p2, p3] = cubic;
             return new Vec(3 * mt * mt * (p1.x - p0.x) + 6 * mt * t * (p2.x - p1.x) + 3 * t * t * (p3.x - p2.x), 3 * mt * mt * (p1.y - p0.y) + 6 * mt * t * (p2.y - p1.y) + 3 * t * t * (p3.y - p2.y)).normalize();
         }
     }
-    /**
-     * Get tangent at a given time.
-     * @param {number} time
-     * @returns {Vec}
-     */
     tangentAtTime(time) {
         return this.derivativeAtTime(time).normalize();
     }
-    /**
-     * Get normal at a given time.
-     * @param {number} time
-     * @returns {Vec}
-     */
     normalAtTime(time) {
         return this.tangentAtTime(time).rotate90();
     }
     // =========================================================================
     // Anchor Insertion
     // =========================================================================
-    /**
-     * Insert an anchor at the given time.
-     * @param {number} time
-     * @returns {Anchor|undefined}
-     */
     insertAnchorAtTime(time) {
         const { anchors, closed } = this;
         if (anchors.length < 2)
@@ -612,11 +423,6 @@ export class Path extends Geometry {
         anchors.splice(anchorIndex1 + 1, 0, anchor);
         return anchor;
     }
-    /**
-     * Split path at an anchor.
-     * @param {Anchor} anchor
-     * @returns {Path[]}
-     */
     splitAtAnchor(anchor) {
         const { anchors, closed } = this;
         const anchorIndex = anchors.indexOf(anchor);
@@ -636,11 +442,6 @@ export class Path extends Geometry {
             return [path1, path2];
         }
     }
-    /**
-     * Split path at time.
-     * @param {number} time
-     * @returns {Path[]}
-     */
     splitAtTime(time) {
         const anchor = this.insertAnchorAtTime(time);
         if (anchor) {
@@ -648,11 +449,6 @@ export class Path extends Geometry {
         }
         return [this];
     }
-    /**
-     * Convert path to polyline with maximum segment length.
-     * @param {number} maxSegmentLength
-     * @returns {Path} this
-     */
     polygonize(maxSegmentLength) {
         if (maxSegmentLength <= 0)
             return this;
@@ -675,12 +471,6 @@ export class Path extends Geometry {
     // =========================================================================
     // Closest Point
     // =========================================================================
-    /**
-     * Find closest point within distance.
-     * @param {number} maxDistance
-     * @param {Vec} point
-     * @returns {import('./Geometry.js').ClosestPointResult}
-     */
     closestPointWithinDistanceToPoint(maxDistance, point) {
         const closestResult = { distance: Infinity };
         const { anchors, closed } = this;
@@ -725,30 +515,12 @@ export class Path extends Geometry {
     // =========================================================================
     // Static Methods
     // =========================================================================
-    /**
-     * Validate that value is a valid Path.
-     * @param {*} a
-     * @returns {boolean}
-     */
     static isValid(a) {
         return a instanceof Path && a.isValid();
     }
-    /**
-     * Create path from array of points.
-     * @param {Vec[]} points
-     * @param {boolean} [closed=false]
-     * @returns {Path}
-     */
     static fromPoints(points, closed = false) {
         return new Path(points.map((point) => new Anchor(point.clone())), closed);
     }
-    /**
-     * Create path from cubic bezier control points.
-     * Points are: start, cp1, cp2, end, cp1, cp2, end, ...
-     * @param {Vec[]} points
-     * @param {boolean} [closed=false]
-     * @returns {Path}
-     */
     static fromCubicBezierPoints(points, closed = false) {
         let prevAnchor = new Anchor(points[0].clone());
         const path = new Path([prevAnchor], closed);
@@ -774,11 +546,6 @@ export class Path extends Geometry {
         }
         return path;
     }
-    /**
-     * Create rectangular path from bounding box.
-     * @param {BoundingBox} box
-     * @returns {Path}
-     */
     static fromBoundingBox(box) {
         const { min, max } = box;
         return new Path([
@@ -788,14 +555,6 @@ export class Path extends Geometry {
             new Anchor(new Vec(min.x, max.y)),
         ], true);
     }
-    /**
-     * Create arc path.
-     * @param {Vec} center
-     * @param {number} radius
-     * @param {number} startAngle - Start angle in degrees
-     * @param {number} endAngle - End angle in degrees
-     * @returns {Path}
-     */
     static fromArc(center, radius, startAngle, endAngle) {
         const absAngle = Math.abs(startAngle - endAngle);
         const numSegments = Math.ceil(absAngle / 90);
@@ -815,30 +574,12 @@ export class Path extends Geometry {
         });
         return path;
     }
-    /**
-     * Create a circle path.
-     * @param {Vec} center
-     * @param {number} radius
-     * @returns {Path}
-     */
     static circle(center, radius) {
         return Path.fromArc(center, radius, 0, 360).close();
     }
-    /**
-     * Create a rectangle path.
-     * @param {number} x
-     * @param {number} y
-     * @param {number} width
-     * @param {number} height
-     * @returns {Path}
-     */
     static rect(x, y, width, height) {
         return Path.fromBoundingBox(new BoundingBox(new Vec(x, y), new Vec(x + width, y + height)));
     }
-    /**
-     * Close this path.
-     * @returns {Path} this
-     */
     close() {
         this.closed = true;
         return this;
@@ -848,10 +589,7 @@ Path.displayName = 'Path';
 // =============================================================================
 // Helper Functions
 // =============================================================================
-/**
- * Normalize time for a path (handle closed loops and clamping).
- * @private
- */
+/** Normalize time for a path (handle closed loops and clamping). */
 const normalizeTimeForPath = (time, path) => {
     const len = path.anchors.length;
     if (path.closed) {
@@ -864,10 +602,7 @@ const normalizeTimeForPath = (time, path) => {
     }
     return clamp(time, 0, len - 1);
 };
-/**
- * Create arc segment for a given angle.
- * @private
- */
+/** Create arc segment for a given angle. */
 const arcSegment = (angle) => {
     const f = (4 / 3) * tan(angle / 4);
     return new Path([

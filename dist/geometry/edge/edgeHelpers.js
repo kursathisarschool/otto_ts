@@ -7,13 +7,6 @@ import { Edge } from './Edge.js';
 import { Group } from '../Group.js';
 import { Path } from '../Path.js';
 import { Shape } from '../Shape.js';
-/**
- * Build edges from a Path.
- * @param {Path} path
- * @param {Object} [options]
- * @param {number} [options.pathIndex=0]
- * @returns {Edge[]}
- */
 export const edgesFromPath = (path, options = {}) => {
     if (!path || !Array.isArray(path.anchors))
         return [];

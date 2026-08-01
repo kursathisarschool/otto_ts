@@ -80,7 +80,7 @@ export class Application {
         this.tabManager = new TabManager();
         this.geometry = Geometry;
         this.storageManager = new StorageManager(this.tabManager, Serializer);
-        this.fileManager = new FileManager(this.tabManager, Serializer);
+        this.fileManager = new FileManager(this.tabManager);
 
         this.context = null;
         this.viewportController = null;

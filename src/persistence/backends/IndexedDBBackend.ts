@@ -1,29 +1,21 @@
 import { StorageBackend } from '../StorageBackend.js';
 
+interface IndexedDBOptions {
+    namespace?: string;
+    storeName?: string;
+    version?: number;
+}
+
 /**
  * IndexedDBBackend - IndexedDB Implementation
- *
- * Storage backend using browser's IndexedDB.
- * Suitable for large scenes (>5MB).
- *
- * Pros:
- * - Much larger storage limit (typically hundreds of MB)
- * - Asynchronous API (doesn't block main thread)
- * - Can store binary data directly
- * - Transactional
- *
- * Cons:
- * - More complex API
- * - Slightly slower for small data
  */
 export class IndexedDBBackend extends StorageBackend {
-    /**
-     * @param {Object} options
-     * @param {string} options.namespace - Database namespace
-     * @param {string} options.storeName - Object store name
-     * @param {number} options.version - Database version
-     */
-    constructor(options = {}) {
+    dbName: string;
+    storeName: string;
+    version: number;
+    private _db: IDBDatabase | null;
+
+    constructor(options: IndexedDBOptions = {}) {
         super(options);
         this.dbName = `${this.namespace}_db`;
         this.storeName = options.storeName || 'scenes';
@@ -31,25 +23,23 @@ export class IndexedDBBackend extends StorageBackend {
         this._db = null;
     }
 
-    getType() {
+    getType(): string {
         return 'indexedDB';
     }
 
-    async isAvailable() {
+    async isAvailable(): Promise<boolean> {
         return 'indexedDB' in window;
     }
 
-    async getMaxSize() {
-        // IndexedDB limit varies by browser, typically much larger than localStorage
-        // Use navigator.storage.estimate() if available
+    async getMaxSize(): Promise<number> {
         if (navigator.storage && navigator.storage.estimate) {
             const estimate = await navigator.storage.estimate();
-            return estimate.quota || 50 * 1024 * 1024; // Default to 50MB
+            return estimate.quota || 50 * 1024 * 1024;
         }
-        return 50 * 1024 * 1024; // 50MB default
+        return 50 * 1024 * 1024;
     }
 
-    async getUsedSize() {
+    async getUsedSize(): Promise<number> {
         if (navigator.storage && navigator.storage.estimate) {
             const estimate = await navigator.storage.estimate();
             return estimate.usage || 0;
@@ -57,11 +47,8 @@ export class IndexedDBBackend extends StorageBackend {
         return 0;
     }
 
-    /**
-     * Open the database connection
-     * @returns {Promise<IDBDatabase>}
-     */
-    async openDatabase() {
+    /** Open the database connection. */
+    async openDatabase(): Promise<IDBDatabase> {
         if (this._db) {
             return this._db;
         }
@@ -78,10 +65,9 @@ export class IndexedDBBackend extends StorageBackend {
                 resolve(this._db);
             };
 
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
+            request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+                const db = (event.target as IDBOpenDBRequest).result;
 
-                // Create object store if it doesn't exist
                 if (!db.objectStoreNames.contains(this.storeName)) {
                     db.createObjectStore(this.storeName, { keyPath: 'key' });
                 }
@@ -89,17 +75,15 @@ export class IndexedDBBackend extends StorageBackend {
         });
     }
 
-    /**
-     * Close the database connection
-     */
-    closeDatabase() {
+    /** Close the database connection. */
+    closeDatabase(): void {
         if (this._db) {
             this._db.close();
             this._db = null;
         }
     }
 
-    async save(key, data) {
+    async save(key: string, data: any): Promise<boolean> {
         try {
             const db = await this.openDatabase();
             const fullKey = this.getFullKey(key);
@@ -128,7 +112,7 @@ export class IndexedDBBackend extends StorageBackend {
         }
     }
 
-    async load(key) {
+    async load(key: string): Promise<any> {
         try {
             const db = await this.openDatabase();
             const fullKey = this.getFullKey(key);
@@ -154,7 +138,7 @@ export class IndexedDBBackend extends StorageBackend {
         }
     }
 
-    async delete(key) {
+    async delete(key: string): Promise<boolean> {
         try {
             const db = await this.openDatabase();
             const fullKey = this.getFullKey(key);
@@ -176,7 +160,7 @@ export class IndexedDBBackend extends StorageBackend {
         }
     }
 
-    async exists(key) {
+    async exists(key: string): Promise<boolean> {
         try {
             const db = await this.openDatabase();
             const fullKey = this.getFullKey(key);
@@ -198,7 +182,7 @@ export class IndexedDBBackend extends StorageBackend {
         }
     }
 
-    async listKeys() {
+    async listKeys(): Promise<string[]> {
         try {
             const db = await this.openDatabase();
             const prefix = `${this.namespace}_`;
@@ -209,7 +193,7 @@ export class IndexedDBBackend extends StorageBackend {
                 const request = store.getAllKeys();
 
                 request.onsuccess = () => {
-                    const allKeys = request.result;
+                    const allKeys = request.result as string[];
                     const filteredKeys = allKeys
                         .filter(key => key.startsWith(prefix))
                         .map(key => this.getShortKey(key));
@@ -227,7 +211,7 @@ export class IndexedDBBackend extends StorageBackend {
         }
     }
 
-    async clear() {
+    async clear(): Promise<boolean> {
         try {
             const keys = await this.listKeys();
             for (const key of keys) {
@@ -240,11 +224,8 @@ export class IndexedDBBackend extends StorageBackend {
         }
     }
 
-    /**
-     * Delete the entire database
-     * @returns {Promise<boolean>}
-     */
-    async deleteDatabase() {
+    /** Delete the entire database. */
+    async deleteDatabase(): Promise<boolean> {
         this.closeDatabase();
 
         return new Promise((resolve, reject) => {

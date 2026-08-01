@@ -20,10 +20,7 @@ export * from './Vec.js';
 export * from './canvas.js';
 // Edge selection module
 export * from './edge/index.js';
-/**
- * Initialize geometry library (PathKit stub).
- * @returns {Promise<null>}
- */
+/** Initialize geometry library (PathKit stub). */
 export const initCuttleGeometry = async (options) => {
     return await _initPathKit(options);
 };

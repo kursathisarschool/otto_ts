@@ -1,11 +1,5 @@
 /**
  * @fileoverview CommandCatalog — name → command-factory registry.
- *
- * Backs PluginAPI.registerCommand (plugins contribute commands by name) and
- * gives tooling a discoverable list. Replaces the never-instantiated
- * CommandRegistry class, whose separate history stack is superseded by the
- * per-tab HistoryManager.
- *
  * @module commands/CommandCatalog
  */
 import { AddShapeCommand, RemoveShapesCommand, DuplicateShapesCommand, MutateShapesCommand, SetBindingCommand, SetShapePropertyCommand } from './shapeCommands.js';
@@ -13,7 +7,6 @@ import { AddParameterCommand, RemoveParameterCommand, SetParameterValueCommand, 
 import { SetEdgeJoineryCommand, ReplaceSceneCommand } from './sceneCommands.js';
 export class CommandCatalog {
     constructor() {
-        /** @type {Map<string, Function>} name → factory(...args) => Command */
         this.factories = new Map();
         // Built-ins
         this.register('shape.add', (...args) => new AddShapeCommand(...args));
@@ -32,9 +25,6 @@ export class CommandCatalog {
     /**
      * Register a command factory under a name. Plugins use this via
      * PluginAPI.registerCommand.
-     *
-     * @param {string} name
-     * @param {Function} factory - (...args) => Command
      */
     register(name, factory) {
         if (!name || typeof factory !== 'function') {
@@ -48,12 +38,7 @@ export class CommandCatalog {
     has(name) {
         return this.factories.has(name);
     }
-    /**
-     * Build a command instance by name.
-     * @param {string} name
-     * @param {...*} args - Passed to the factory.
-     * @returns {import('./Command.js').Command}
-     */
+    /** Build a command instance by name. Extra args are passed to the factory. */
     create(name, ...args) {
         const factory = this.factories.get(name);
         if (!factory) {

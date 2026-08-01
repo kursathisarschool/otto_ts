@@ -1,157 +1,116 @@
+import type { Shape } from '../Shape.js';
+import type { Binding } from '../../Binding.js';
+
 /**
  * ShapeDecorator - Base Decorator Pattern Implementation
  *
  * Wraps a shape to add visual effects without modifying the original shape class.
- * Decorators can be stacked to combine multiple effects.
- *
- * Benefits:
- * - Open/Closed Principle: Add new effects without modifying shapes
- * - Single Responsibility: Each decorator handles one effect
- * - Composable: Stack multiple decorators for combined effects
- * - Runtime flexibility: Add/remove effects dynamically
  */
 export class ShapeDecorator {
-    /**
-     * @param {Shape} shape - The shape to decorate
-     */
-    constructor(shape) {
+    wrappedShape: Shape | ShapeDecorator;
+
+    constructor(shape: Shape | ShapeDecorator) {
         if (!shape) {
             throw new Error('ShapeDecorator requires a shape to wrap');
         }
         this.wrappedShape = shape;
     }
 
-    /**
-     * Get the innermost wrapped shape (unwrap all decorators)
-     * @returns {Shape}
-     */
-    getBaseShape() {
+    getBaseShape(): Shape {
         if (this.wrappedShape instanceof ShapeDecorator) {
             return this.wrappedShape.getBaseShape();
         }
         return this.wrappedShape;
     }
 
-    /**
-     * Get the directly wrapped shape (one level)
-     * @returns {Shape}
-     */
-    getWrappedShape() {
+    getWrappedShape(): Shape | ShapeDecorator {
         return this.wrappedShape;
     }
 
-    // Delegate Shape interface methods to wrapped shape
-
-    get id() {
+    get id(): string {
         return this.wrappedShape.id;
     }
 
-    get type() {
+    get type(): string {
         return this.wrappedShape.type;
     }
 
-    get position() {
+    get position(): { x: number; y: number } {
         return this.wrappedShape.position;
     }
 
-    set position(value) {
+    set position(value: { x: number; y: number }) {
         this.wrappedShape.position = value;
     }
 
-    get bindings() {
+    get bindings(): Record<string, Binding> {
         return this.wrappedShape.bindings;
     }
 
-    getBindableProperties() {
+    getBindableProperties(): string[] {
         return this.wrappedShape.getBindableProperties();
     }
 
-    getBounds() {
+    getBounds(): any {
         return this.wrappedShape.getBounds();
     }
 
-    containsPoint(x, y) {
+    containsPoint(x: number, y: number): boolean {
         return this.wrappedShape.containsPoint(x, y);
     }
 
-    /**
-     * Render the shape with decorations
-     * Subclasses override this to add effects before/after rendering
-     * @param {CanvasRenderingContext2D} ctx
-     */
-    render(ctx) {
+    render(ctx: CanvasRenderingContext2D): void {
         this.wrappedShape.render(ctx);
     }
 
-    /**
-     * Hook for decorators to render before the shape
-     * @param {CanvasRenderingContext2D} ctx
-     */
-    renderBefore(ctx) {
+    renderBefore(ctx: CanvasRenderingContext2D): void {
         // Override in subclasses
     }
 
-    /**
-     * Hook for decorators to render after the shape
-     * @param {CanvasRenderingContext2D} ctx
-     */
-    renderAfter(ctx) {
+    renderAfter(ctx: CanvasRenderingContext2D): void {
         // Override in subclasses
     }
 
-    resolve(parameterStore, bindingResolver) {
+    resolve(parameterStore: any, bindingResolver: any): ShapeDecorator {
         const resolvedShape = this.wrappedShape.resolve(parameterStore, bindingResolver);
         return this.cloneWithShape(resolvedShape);
     }
 
-    clone() {
+    clone(): ShapeDecorator {
         const clonedShape = this.wrappedShape.clone();
         return this.cloneWithShape(clonedShape);
     }
 
     /**
-     * Create a new decorator of the same type wrapping a different shape
-     * Subclasses must override this to preserve their specific properties
-     * @param {Shape} newShape
-     * @returns {ShapeDecorator}
+     * Create a new decorator of the same type wrapping a different shape.
+     * Subclasses must override this to preserve their specific properties.
      */
-    cloneWithShape(newShape) {
+    cloneWithShape(newShape: Shape | ShapeDecorator): ShapeDecorator {
         return new ShapeDecorator(newShape);
     }
 
-    setBinding(property, binding) {
+    setBinding(property: string, binding: Binding): void {
         this.wrappedShape.setBinding(property, binding);
     }
 
-    getBinding(property) {
+    getBinding(property: string): Binding | null {
         return this.wrappedShape.getBinding(property);
     }
 
-    toJSON() {
+    toJSON(): any {
         const json = this.wrappedShape.toJSON();
-        // Add decorator information
         json.decorators = json.decorators || [];
         json.decorators.push(this.getDecoratorJSON());
         return json;
     }
 
-    /**
-     * Get JSON representation of this decorator's properties
-     * Subclasses override to include their specific properties
-     * @returns {Object}
-     */
-    getDecoratorJSON() {
+    getDecoratorJSON(): { type: string } {
         return {
             type: 'base'
         };
     }
 
-    /**
-     * Check if this decorator is of a specific type
-     * @param {string} decoratorType
-     * @returns {boolean}
-     */
-    hasDecorator(decoratorType) {
+    hasDecorator(decoratorType: string): boolean {
         if (this.getDecoratorJSON().type === decoratorType) {
             return true;
         }
@@ -161,12 +120,7 @@ export class ShapeDecorator {
         return false;
     }
 
-    /**
-     * Remove a decorator of a specific type from the chain
-     * @param {string} decoratorType
-     * @returns {Shape} - The shape without the specified decorator
-     */
-    removeDecorator(decoratorType) {
+    removeDecorator(decoratorType: string): Shape | ShapeDecorator {
         if (this.getDecoratorJSON().type === decoratorType) {
             return this.wrappedShape;
         }

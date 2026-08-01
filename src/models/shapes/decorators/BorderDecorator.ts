@@ -1,27 +1,27 @@
 import { ShapeDecorator } from './ShapeDecorator.js';
+import type { Shape } from '../Shape.js';
+
+interface Options {
+    color?: string;
+    width?: number;
+    style?: string;
+    lineCap?: CanvasLineCap;
+    lineJoin?: CanvasLineJoin;
+    dashPattern?: number[];
+}
 
 /**
  * BorderDecorator - Adds custom border styling to shapes
- *
- * Usage:
- * const borderedCircle = new BorderDecorator(circle, {
- *     color: '#e74c3c',
- *     width: 3,
- *     style: 'dashed'
- * });
  */
 export class BorderDecorator extends ShapeDecorator {
-    /**
-     * @param {Shape} shape - The shape to decorate
-     * @param {Object} options - Border options
-     * @param {string} options.color - Border color (default: '#333333')
-     * @param {number} options.width - Border width in pixels (default: 2)
-     * @param {string} options.style - Border style: 'solid', 'dashed', 'dotted' (default: 'solid')
-     * @param {string} options.lineCap - Line cap style: 'butt', 'round', 'square' (default: 'round')
-     * @param {string} options.lineJoin - Line join style: 'miter', 'round', 'bevel' (default: 'round')
-     * @param {Array<number>} options.dashPattern - Custom dash pattern (overrides style)
-     */
-    constructor(shape, options = {}) {
+    borderColor: string;
+    borderWidth: number;
+    borderStyle: string;
+    lineCap: CanvasLineCap;
+    lineJoin: CanvasLineJoin;
+    dashPattern: number[] | null;
+
+    constructor(shape: Shape | ShapeDecorator, options: Options = {}) {
         super(shape);
         this.borderColor = options.color || '#333333';
         this.borderWidth = options.width !== undefined ? options.width : 2;
@@ -31,11 +31,8 @@ export class BorderDecorator extends ShapeDecorator {
         this.dashPattern = options.dashPattern || null;
     }
 
-    /**
-     * Get dash pattern based on style
-     * @returns {Array<number>}
-     */
-    getDashPattern() {
+    /** Get dash pattern based on style. */
+    getDashPattern(): number[] {
         if (this.dashPattern) {
             return this.dashPattern;
         }
@@ -51,32 +48,24 @@ export class BorderDecorator extends ShapeDecorator {
         }
     }
 
-    /**
-     * Render the shape with custom border
-     * @param {CanvasRenderingContext2D} ctx
-     */
-    render(ctx) {
+    /** Render the shape with custom border. */
+    render(ctx: CanvasRenderingContext2D): void {
         ctx.save();
 
-        // Apply border settings
         ctx.strokeStyle = this.borderColor;
         ctx.lineWidth = this.borderWidth;
         ctx.lineCap = this.lineCap;
         ctx.lineJoin = this.lineJoin;
         ctx.setLineDash(this.getDashPattern());
 
-        // Render the border by tracing the shape path
         this.renderBorder(ctx);
 
         ctx.restore();
     }
 
-    /**
-     * Render just the border (trace path and stroke)
-     * @param {CanvasRenderingContext2D} ctx
-     */
-    renderBorder(ctx) {
-        const shape = this.getBaseShape();
+    /** Render just the border (trace path and stroke). */
+    renderBorder(ctx: CanvasRenderingContext2D): void {
+        const shape = this.getBaseShape() as any;
         const type = shape.type;
 
         ctx.beginPath();
@@ -86,7 +75,6 @@ export class BorderDecorator extends ShapeDecorator {
         } else if (type === 'rectangle') {
             ctx.rect(shape.x, shape.y, shape.width, shape.height);
         } else if (type === 'group') {
-            // For groups, render border on each child
             const children = shape.getChildren();
             for (const child of children) {
                 const borderedChild = new BorderDecorator(child, {
@@ -95,13 +83,12 @@ export class BorderDecorator extends ShapeDecorator {
                     style: this.borderStyle,
                     lineCap: this.lineCap,
                     lineJoin: this.lineJoin,
-                    dashPattern: this.dashPattern
+                    dashPattern: this.dashPattern ?? undefined
                 });
                 borderedChild.renderBorder(ctx);
             }
             return;
         } else {
-            // Generic fallback: use bounds as rectangle
             const bounds = shape.getBounds();
             ctx.rect(bounds.x, bounds.y, bounds.width, bounds.height);
         }
@@ -109,11 +96,8 @@ export class BorderDecorator extends ShapeDecorator {
         ctx.stroke();
     }
 
-    /**
-     * Get expanded bounds to include border width
-     * @returns {Object} {x, y, width, height}
-     */
-    getBounds() {
+    /** Get expanded bounds to include border width. */
+    getBounds(): any {
         const bounds = this.wrappedShape.getBounds();
         const halfWidth = this.borderWidth / 2;
 
@@ -125,18 +109,18 @@ export class BorderDecorator extends ShapeDecorator {
         };
     }
 
-    cloneWithShape(newShape) {
+    cloneWithShape(newShape: Shape | ShapeDecorator): BorderDecorator {
         return new BorderDecorator(newShape, {
             color: this.borderColor,
             width: this.borderWidth,
             style: this.borderStyle,
             lineCap: this.lineCap,
             lineJoin: this.lineJoin,
-            dashPattern: this.dashPattern ? [...this.dashPattern] : null
+            dashPattern: this.dashPattern ? [...this.dashPattern] : undefined
         });
     }
 
-    getDecoratorJSON() {
+    getDecoratorJSON(): any {
         return {
             type: 'border',
             color: this.borderColor,
@@ -148,13 +132,8 @@ export class BorderDecorator extends ShapeDecorator {
         };
     }
 
-    /**
-     * Create BorderDecorator from JSON
-     * @param {Shape} shape
-     * @param {Object} json
-     * @returns {BorderDecorator}
-     */
-    static fromJSON(shape, json) {
+    /** Create BorderDecorator from JSON. */
+    static fromJSON(shape: Shape | ShapeDecorator, json: any): BorderDecorator {
         return new BorderDecorator(shape, {
             color: json.color,
             width: json.width,

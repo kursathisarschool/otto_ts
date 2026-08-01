@@ -11,16 +11,7 @@ import { Shape } from './Shape.js';
 import { Fill, Stroke } from './Style.js';
 import { isValidUnit, scaleFactorForUnitConversion } from './units.js';
 import { Vec } from './Vec.js';
-/**
- * @typedef {Object} ImportSVGOptions
- * @property {import('./units.js').Unit} units
- */
-/**
- * Parse SVG string into Geometry.
- * @param {string} svgString
- * @param {ImportSVGOptions} options
- * @returns {import('./Geometry.js').Geometry}
- */
+/** Parse SVG string into Geometry. */
 export const geometryFromSVGString = (svgString, options) => {
     const domparser = new DOMParser();
     const doc = domparser.parseFromString(svgString, 'image/svg+xml');
@@ -39,12 +30,7 @@ const tagNamesWithDefaultPaint = {
     rect: true,
     text: true
 };
-/**
- * Mutate anchors to form a circular arc between them.
- * @param {Anchor} anchor1
- * @param {Anchor} anchor2
- * @param {boolean} horizontal
- */
+/** Mutate anchors to form a circular arc between them. */
 const makeCircularArc = (anchor1, anchor2, horizontal) => {
     const c = 0.551915024494;
     const x1 = anchor1.position.x;
@@ -73,6 +59,9 @@ const parseStyleMap = (svgNode) => {
     });
     return map;
 };
+// Generic: return type matches whatever defaultValue's type is (T),
+// so callers get `string | undefined`, `string | null`, or plain `string`
+// depending on what they pass in — one function, three call shapes.
 const getStringAttribute = (svgNode, name, defaultValue, styleMap = {}) => {
     if (svgNode.hasAttribute(name)) {
         return svgNode.getAttribute(name);
@@ -125,12 +114,7 @@ const transformGeometryForViewbox = (geometry, svgNode, options) => {
         geometry.scaleStroke(scaleFactor);
     }
 };
-/**
- * Convert an SVG node into Geometry.
- * @param {SVGElement} svgNode
- * @param {ImportSVGOptions} options
- * @returns {import('./Geometry.js').Geometry|undefined}
- */
+/** Convert an SVG node into Geometry. */
 export const geometryFromSVGNode = (svgNode, options) => {
     const styleMap = parseStyleMap(svgNode);
     const display = getStringAttribute(svgNode, 'display', undefined, styleMap);
@@ -292,20 +276,17 @@ export const geometryFromSVGNode = (svgNode, options) => {
     const opacity = getNumberAttribute(svgNode, 'opacity', 1, styleMap);
     const fillOpacity = getNumberAttribute(svgNode, 'fill-opacity', 1, styleMap);
     const strokeOpacity = getNumberAttribute(svgNode, 'stroke-opacity', 1, styleMap);
-    if (result.fill) {
+    // Group has no fill/stroke field, so we narrow to Path | Shape first —
+    // functionally identical to the original (Group.fill was always undefined anyway).
+    if ((result instanceof Path || result instanceof Shape) && result.fill) {
         result.fill.color.a *= opacity * fillOpacity;
     }
-    if (result.stroke) {
+    if ((result instanceof Path || result instanceof Shape) && result.stroke) {
         result.stroke.color.a *= opacity * strokeOpacity;
     }
     return result;
 };
-/**
- * Convert a path or shape to an SVG path element string.
- * @param {Path|Shape} item
- * @param {import('./Geometry.js').ExportOptions} [options]
- * @returns {string}
- */
+/** Convert a path or shape to an SVG path element string. */
 export const pathOrShapeToSVGString = (item, options) => {
     let stroke = item.stroke;
     let fill = item.fill;

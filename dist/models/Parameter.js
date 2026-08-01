@@ -24,20 +24,6 @@
  * Parameter class
  */
 export class Parameter {
-    /**
-     * @param {string} id        - Unique identifier for this parameter within
-     *   its scene.  Used as the lookup key in ParameterStore and referenced by
-     *   {@link ParameterBinding}.
-     * @param {string} name      - Human-readable name displayed on the slider
-     *   label.  Also serves as the variable name in
-     *   {@link ExpressionBinding} expressions (e.g. {@code "radius * 2"}).
-     * @param {number} [value=0] - Initial value.  Not clamped here; use
-     *   {@link Parameter#setValue} for clamped writes.
-     * @param {number} [min=-Infinity] - Lower bound of the allowed range.
-     * @param {number} [max=Infinity]  - Upper bound of the allowed range.
-     * @param {number} [step=0]        - Discrete step size.  A value of
-     *   {@code 0} means continuous (no rounding is applied).
-     */
     constructor(id, name, value = 0, min = -Infinity, max = Infinity, step = 0) {
         this.id = id;
         this.name = name;
@@ -132,12 +118,6 @@ export class Parameter {
  * ParameterBuilder - Builder Pattern for creating Parameters
  */
 export class ParameterBuilder {
-    /**
-     * Initialise all fields to their default values.  These defaults mirror
-     * the {@link Parameter} constructor defaults so that a builder used
-     * without calling every setter still produces a valid parameter (aside
-     * from the mandatory {@link ParameterBuilder#name}).
-     */
     constructor() {
         this.id = null;
         this.name = null;

@@ -4,7 +4,7 @@
 import { Anchor } from '../../Anchor.js';
 import { Path } from '../../Path.js';
 import { Vec } from '../../Vec.js';
-import { Edge, EdgeSelection, EdgeHitTester, edgesFromPath, edgesFromItem, hitTestEdge, hitTestEdges, closestEdgeToPoint, } from '../index.js';
+import { Edge, EdgeSelection, EdgeHitTester, edgesFromPath, hitTestEdge, hitTestEdges, closestEdgeToPoint, } from '../index.js';
 let testCount = 0;
 let passCount = 0;
 const test = (name, passed) => {

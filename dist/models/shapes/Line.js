@@ -1,16 +1,3 @@
-/**
- * @fileoverview Line -- a two-endpoint open path segment.
- *
- * A Line has no enclosed area; it is purely a stroke. Hit-testing therefore
- * uses a thick stroke (width 6) as the hit region rather than a fill — see
- * {@link HIT_TEST_STROKE}.
- *
- * All four endpoint coordinates are marked `alwaysSerialize`: they ARE the
- * geometry, so they are written to JSON even when bound to a parameter
- * (matching the pre-schema toJSON override).
- *
- * @module models/shapes/Line
- */
 import { Shape } from './Shape.js';
 import { Color as GeoColor, Path as GeoPath, Stroke as GeoStroke, Vec as GeoVec, styleContainsPoint } from '../../geometry/index.js';
 /**

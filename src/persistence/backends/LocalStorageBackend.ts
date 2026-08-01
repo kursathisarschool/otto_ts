@@ -1,31 +1,22 @@
 import { StorageBackend } from '../StorageBackend.js';
 
+interface LocalStorageOptions {
+    namespace?: string;
+}
+
 /**
  * LocalStorageBackend - localStorage Implementation
- *
- * Default storage backend using browser's localStorage.
- * Limited to ~5MB in most browsers.
- *
- * Pros:
- * - Simple, synchronous API
- * - Works in all browsers
- * - Data persists across sessions
- *
- * Cons:
- * - Limited to ~5MB
- * - Synchronous (can block main thread)
- * - String-only storage
  */
 export class LocalStorageBackend extends StorageBackend {
-    constructor(options = {}) {
+    constructor(options: LocalStorageOptions = {}) {
         super(options);
     }
 
-    getType() {
+    getType(): string {
         return 'localStorage';
     }
 
-    async isAvailable() {
+    async isAvailable(): Promise<boolean> {
         try {
             const test = '__storage_test__';
             localStorage.setItem(test, test);
@@ -36,40 +27,36 @@ export class LocalStorageBackend extends StorageBackend {
         }
     }
 
-    async getMaxSize() {
-        // localStorage typically has a 5MB limit
-        return 5 * 1024 * 1024; // 5MB in bytes
+    async getMaxSize(): Promise<number> {
+        return 5 * 1024 * 1024;
     }
 
-    async getUsedSize() {
+    async getUsedSize(): Promise<number> {
         let total = 0;
         for (const key in localStorage) {
             if (localStorage.hasOwnProperty(key)) {
-                // Each character is 2 bytes in JavaScript strings
                 total += (localStorage[key].length + key.length) * 2;
             }
         }
         return total;
     }
 
-    async save(key, data) {
+    async save(key: string, data: any): Promise<boolean> {
         try {
             const fullKey = this.getFullKey(key);
             const serialized = this.serialize(data);
 
-            // Check if we have enough space
             const dataSize = serialized.length * 2;
             const maxSize = await this.getMaxSize();
             const usedSize = await this.getUsedSize();
 
             if (usedSize + dataSize > maxSize) {
                 console.warn(`LocalStorage may be full. Used: ${usedSize}, Needed: ${dataSize}`);
-                // Try anyway - browser will throw if actually full
             }
 
             localStorage.setItem(fullKey, serialized);
             return true;
-        } catch (error) {
+        } catch (error: any) {
             if (error.name === 'QuotaExceededError') {
                 console.error('LocalStorage quota exceeded');
             } else {
@@ -79,7 +66,7 @@ export class LocalStorageBackend extends StorageBackend {
         }
     }
 
-    async load(key) {
+    async load(key: string): Promise<any> {
         try {
             const fullKey = this.getFullKey(key);
             const serialized = localStorage.getItem(fullKey);
@@ -95,7 +82,7 @@ export class LocalStorageBackend extends StorageBackend {
         }
     }
 
-    async delete(key) {
+    async delete(key: string): Promise<boolean> {
         try {
             const fullKey = this.getFullKey(key);
             localStorage.removeItem(fullKey);
@@ -106,13 +93,13 @@ export class LocalStorageBackend extends StorageBackend {
         }
     }
 
-    async exists(key) {
+    async exists(key: string): Promise<boolean> {
         const fullKey = this.getFullKey(key);
         return localStorage.getItem(fullKey) !== null;
     }
 
-    async listKeys() {
-        const keys = [];
+    async listKeys(): Promise<string[]> {
+        const keys: string[] = [];
         const prefix = `${this.namespace}_`;
 
         for (const key in localStorage) {
@@ -124,7 +111,7 @@ export class LocalStorageBackend extends StorageBackend {
         return keys;
     }
 
-    async clear() {
+    async clear(): Promise<boolean> {
         try {
             const keys = await this.listKeys();
             for (const key of keys) {
@@ -137,11 +124,8 @@ export class LocalStorageBackend extends StorageBackend {
         }
     }
 
-    /**
-     * Get remaining space in bytes (approximate)
-     * @returns {Promise<number>}
-     */
-    async getRemainingSpace() {
+    /** Get remaining space in bytes (approximate). */
+    async getRemainingSpace(): Promise<number> {
         const max = await this.getMaxSize();
         const used = await this.getUsedSize();
         return Math.max(0, max - used);

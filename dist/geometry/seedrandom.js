@@ -23,11 +23,7 @@ const mash = () => {
     };
     return mashFn;
 };
-/**
- * Create a seeded PRNG function.
- * @param {*} seed
- * @returns {function(): number} prng
- */
+/** Create a seeded PRNG function. */
 export const seedrandom = (seed) => {
     const mashFn = mash();
     let s0 = mashFn(' ');
@@ -43,13 +39,13 @@ export const seedrandom = (seed) => {
     if (s2 < 0)
         s2 += 1;
     let c = 1;
-    const prng = () => {
+    const prng = (() => {
         const t = 2091639 * s0 + c * 2.3283064365386963e-10;
         s0 = s1;
         s1 = s2;
         s2 = t - (c = t | 0);
         return s2;
-    };
+    });
     prng.int32 = () => {
         return (prng() * 0x100000000) | 0;
     };

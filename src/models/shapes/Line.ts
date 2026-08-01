@@ -11,8 +11,8 @@
  *
  * @module models/shapes/Line
  */
-
-import { Shape } from './Shape.js';
+import { type Schema } from './schema.js';
+import { Bounds, Shape } from './Shape.js';
 import {
     Color as GeoColor,
     Path as GeoPath,
@@ -33,7 +33,7 @@ import {
  * @constant
  * @private
  */
-const HIT_TEST_STROKE = new GeoStroke(new GeoColor(0, 0, 0, 1), false, 6, 'centered', 'round', 'round', 4);
+const HIT_TEST_STROKE: GeoStroke = new GeoStroke(new GeoColor(0, 0, 0, 1), false, 6, 'centered', 'round', 'round', 4);
 
 /**
  * Two-endpoint open line segment.
@@ -43,7 +43,7 @@ const HIT_TEST_STROKE = new GeoStroke(new GeoColor(0, 0, 0, 1), false, 6, 'cente
 export class Line extends Shape {
     static type = 'line';
 
-    static SCHEMA = {
+    static SCHEMA: Schema = {
         x1: { type: 'number', default: (o) => o.position?.x ?? 0, bindable: true, translate: 'x', alwaysSerialize: true, label: 'X1' },
         y1: { type: 'number', default: (o) => o.position?.y ?? 0, bindable: true, translate: 'y', alwaysSerialize: true, label: 'Y1' },
         x2: { type: 'number', default: (o) => (o.position?.x ?? 0) + 40, bindable: true, translate: 'x', alwaysSerialize: true, label: 'X2' },
@@ -55,7 +55,7 @@ export class Line extends Shape {
      *
      * @returns {{x: number, y: number, width: number, height: number}}
      */
-    getBounds() {
+    getBounds(): Bounds {
         const path = this.toGeometryPath();
         const box = path.tightBoundingBox() || path.looseBoundingBox();
         if (!box) {
@@ -77,7 +77,7 @@ export class Line extends Shape {
      * @param {number} y
      * @returns {boolean}
      */
-    containsPoint(x, y) {
+    containsPoint(x: number, y: number): boolean {
         const path = this.toGeometryPath();
         const stroke = HIT_TEST_STROKE.clone();
         path.assignStroke(stroke);
@@ -89,8 +89,8 @@ export class Line extends Shape {
      *
      * @param {CanvasRenderingContext2D} ctx
      */
-    render(ctx) {
-        const path = this.toGeometryPath();
+    render(ctx: CanvasRenderingContext2D): void {
+        const path: GeoPath = this.toGeometryPath();
         ctx.beginPath();
         path.toCanvasPath(ctx);
         ctx.strokeStyle = '#000';
@@ -103,7 +103,7 @@ export class Line extends Shape {
      *
      * @returns {import('../../geometry/Path.js').Path}
      */
-    toGeometryPath() {
+    toGeometryPath(): GeoPath {
         return GeoPath.fromPoints([
             new GeoVec(this.x1, this.y1),
             new GeoVec(this.x2, this.y2)

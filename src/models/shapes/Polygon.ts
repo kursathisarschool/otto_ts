@@ -13,8 +13,8 @@
  *
  * @module models/shapes/Polygon
  */
-
-import { Shape } from './Shape.js';
+import { type Schema } from './schema.js';
+import { Bounds, Shape } from './Shape.js';
 import {
     Color as GeoColor,
     Fill as GeoFill,
@@ -29,7 +29,7 @@ import {
  * @constant
  * @private
  */
-const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
+const HIT_TEST_FILL:GeoFill = new GeoFill(new GeoColor(0, 0, 0, 1));
 
 /**
  * Regular N-sided polygon inscribed in a circle.
@@ -41,7 +41,7 @@ const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
 export class Polygon extends Shape {
     static type = 'polygon';
 
-    static SCHEMA = {
+    static SCHEMA: Schema = {
         centerX: { type: 'number', default: (o) => o.position?.x ?? 0, bindable: true, translate: 'x', label: 'Center X' },
         centerY: { type: 'number', default: (o) => o.position?.y ?? 0, bindable: true, translate: 'y', label: 'Center Y' },
         radius: { type: 'number', default: 20, bindable: true, min: 0, label: 'Radius' },
@@ -52,7 +52,7 @@ export class Polygon extends Shape {
      * Compute the AABB by delegating to the geometry path.
      * @returns {{x: number, y: number, width: number, height: number}}
      */
-    getBounds() {
+    getBounds():Bounds {
         const path = this.toGeometryPath();
         const box = path.tightBoundingBox() || path.looseBoundingBox();
         if (!box) {
@@ -73,8 +73,8 @@ export class Polygon extends Shape {
      * @param {number} y - Y coordinate to test.
      * @returns {boolean} True if the point is inside or on the polygon boundary.
      */
-    containsPoint(x, y) {
-        const path = this.toGeometryPath();
+    containsPoint(x: number, y: number): boolean {
+        const path:GeoPath = this.toGeometryPath();
         path.assignFill(HIT_TEST_FILL);
         return styleContainsPoint(path, new GeoVec(x, y));
     }
@@ -83,8 +83,8 @@ export class Polygon extends Shape {
      * Render the polygon outline onto the canvas.
      * @param {CanvasRenderingContext2D} ctx - The Otto canvas 2D context.
      */
-    render(ctx) {
-        const path = this.toGeometryPath();
+    render(ctx: CanvasRenderingContext2D):void {
+        const path:GeoPath = this.toGeometryPath();
         ctx.beginPath();
         path.toCanvasPath(ctx);
         ctx.stroke();
@@ -105,18 +105,18 @@ export class Polygon extends Shape {
      *
      * @returns {import('../../geometry/Path.js').Path} A closed N-vertex GeoPath.
      */
-    toGeometryPath() {
-        const points = [];
-        const sides = Math.max(3, Math.floor(this.sides));
-        const angleStep = (2 * Math.PI) / sides;
+    toGeometryPath(): GeoPath {
+        const points: any[] = [];
+        const sides:number = Math.max(3, Math.floor(this.sides));
+        const angleStep: number = (2 * Math.PI) / sides;
 
         // Start at top (90 degrees offset)
-        const startAngle = -Math.PI / 2;
+        const startAngle: number = -Math.PI / 2;
 
         for (let i = 0; i < sides; i++) {
-            const angle = startAngle + i * angleStep;
-            const x = this.centerX + this.radius * Math.cos(angle);
-            const y = this.centerY + this.radius * Math.sin(angle);
+            const angle: number = startAngle + i * angleStep;
+            const x: number = this.centerX + this.radius * Math.cos(angle);
+            const y: number = this.centerY + this.radius * Math.sin(angle);
             points.push(new GeoVec(x, y));
         }
 

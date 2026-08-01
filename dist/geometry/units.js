@@ -3,17 +3,7 @@
  *
  * Unit conversion helpers for SVG import/export.
  */
-/**
- * Valid length units.
- * @typedef {'in' | 'ft' | 'mm' | 'cm' | 'm' | 'px' | 'pc' | 'pt'} Unit
- */
-/**
- * Human-friendly unit names.
- * @typedef {'inches' | 'feet' | 'millimeters' | 'centimeters' | 'meters' | 'pixels' | 'picas' | 'points'} UnitName
- */
-/** @type {Unit[]} */
 export const units = ['in', 'ft', 'mm', 'cm', 'm', 'px', 'pc', 'pt'];
-/** @type {Record<Unit, UnitName>} */
 export const unitNames = {
     in: 'inches',
     ft: 'feet',
@@ -24,7 +14,6 @@ export const unitNames = {
     pc: 'picas',
     pt: 'points'
 };
-/** @type {Record<Unit, number>} */
 export const unitScaleFactors = {
     in: 1,
     ft: 12,
@@ -35,28 +24,15 @@ export const unitScaleFactors = {
     pc: 1 / 6,
     pt: 1 / 72
 };
-/**
- * Check if a unit string is valid.
- * @param {string} unit
- * @returns {unit is Unit}
- */
+/** Check if a unit string is valid. */
 export const isValidUnit = (unit) => {
     return Object.prototype.hasOwnProperty.call(unitNames, unit);
 };
-/**
- * Returns a scale factor to convert from sourceUnit to targetUnit.
- * @param {Unit} sourceUnit
- * @param {Unit} targetUnit
- * @returns {number}
- */
+/** Returns a scale factor to convert from sourceUnit to targetUnit. */
 export const scaleFactorForUnitConversion = (sourceUnit, targetUnit) => {
     return unitScaleFactors[sourceUnit] / unitScaleFactors[targetUnit];
 };
-/**
- * Convert a unit name to a unit code.
- * @param {UnitName} unitName
- * @returns {Unit}
- */
+/** Convert a unit name to a unit code. */
 export const unitForUnitName = (unitName) => {
     for (let unit of units) {
         if (unitNames[unit] === unitName)

@@ -1,19 +1,3 @@
-/**
- * @fileoverview Plus-sign / cross shape -- two perpendicular rectangular arms of equal
- * length intersecting at the centre.
- *
- * The cross outline is a 12-vertex rectilinear polygon.  {@code width} controls the
- * total arm span (tip-to-tip in both the horizontal and vertical directions -- the cross
- * is symmetric), and {@code thickness} controls how wide each arm is.  Both are measured
- * as full extents (not half-extents); the code divides by 2 internally when computing
- * vertex positions.
- *
- * The shape also exposes {@link Cross#getPoints}, which returns the same 12 vertices as
- * plain {@code {x, y}} objects.  This is the interface consumed by the boolean-operation
- * subsystem in the programming module.
- *
- * @module models/shapes/Cross
- */
 import { Shape } from './Shape.js';
 import { Color as GeoColor, Fill as GeoFill, Path as GeoPath, Vec as GeoVec, styleContainsPoint } from '../../geometry/index.js';
 /**

@@ -1,7 +1,6 @@
 /**
  * Shape.js unit tests
  */
-import { Anchor } from '../Anchor.js';
 import { BoundingBox } from '../BoundingBox.js';
 import { Color } from '../Color.js';
 import { AffineMatrix } from '../Matrix.js';
@@ -15,10 +14,10 @@ const test = (name, passed) => {
     testCount++;
     if (passed) {
         passCount++;
-        console.log(`  \u2713 ${name}`);
+        console.log(`  ✓ ${name}`);
     }
     else {
-        console.log(`  \u2717 ${name}`);
+        console.log(`  ✗ ${name}`);
     }
 };
 console.log('Shape.js tests:\n');
@@ -204,7 +203,6 @@ test('reverse() reverses all paths and path order', (() => {
         Path.fromPoints([new Vec(0, 50), new Vec(100, 50)]),
     ]);
     s.reverse();
-    // First path is now the second original, and its anchors are reversed
     return s.paths[0].anchors[0].position.y === 50 &&
         s.paths[0].anchors[0].position.x === 100;
 })());
@@ -235,7 +233,6 @@ test('fromSVGPathString() handles multiple subpaths', (() => {
 // =============================================================================
 console.log('\n  Boolean Operations (stubs):');
 test('booleanUnion() returns shape with combined paths', (() => {
-    // Note: This is a stub - actual boolean ops require PathKit
     const shape = Shape.booleanUnion([
         Path.rect(0, 0, 50, 50),
         Path.rect(25, 25, 50, 50),

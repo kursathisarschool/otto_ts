@@ -169,7 +169,6 @@ test('cubicCubicIntersections crossing curves', (() => {
     const cubic1 = [new Vec(0, 0), new Vec(33, 50), new Vec(66, 50), new Vec(100, 0)];
     const cubic2 = [new Vec(0, 50), new Vec(33, 0), new Vec(66, 0), new Vec(100, 50)];
     const results = cubicCubicIntersections(cubic1, cubic2);
-    // These curves should intersect at least once
     return results.length >= 1;
 })());
 test('cubicCubicIntersections non-crossing curves', (() => {

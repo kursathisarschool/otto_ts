@@ -14,10 +14,10 @@ const test = (name, passed) => {
     testCount++;
     if (passed) {
         passCount++;
-        console.log(`  \u2713 ${name}`);
+        console.log(`  ✓ ${name}`);
     }
     else {
-        console.log(`  \u2717 ${name}`);
+        console.log(`  ✗ ${name}`);
     }
 };
 const approx = (a, b, tolerance = 0.001) => Math.abs(a - b) < tolerance;

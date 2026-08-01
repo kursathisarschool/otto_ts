@@ -1,12 +1,6 @@
 /**
  * @fileoverview HitTestService — pure hit-testing queries over the scene,
  * selection, viewport, and interaction state.
- *
- * Ported from CanvasRenderer. Every method answers "what is at this point?"
- * (shape, edge, rotation/resize handle, path anchor, bezier handle, joinery
- * handle, path-draw preview handle/anchor) and returns a plain result object
- * or null. No mutations, no events, no drawing.
- *
  * @module services/HitTestService
  */
 import { PathShape } from '../models/shapes/PathShape.js';
@@ -22,30 +16,28 @@ import {
     rotatePoint
 } from '../views/canvas/canvasGeometry.js';
 
+interface HitTestServiceDeps {
+    context: any;
+    viewportController: any;
+    interaction: any;
+}
+
 export class HitTestService {
-    /**
-     * @param {Object} deps
-     * @param {import('../core/SceneContext.js').SceneContext} deps.context
-     * @param {import('../controllers/ViewportController.js').ViewportController} deps.viewportController
-     * @param {import('../controllers/InteractionState.js').InteractionState} deps.interaction
-     */
-    constructor({ context, viewportController, interaction }) {
+    context: any;
+    vc: any;
+    interaction: any;
+    edgeHitTester: EdgeHitTester;
+
+    constructor({ context, viewportController, interaction }: HitTestServiceDeps) {
         this.context = context;
         this.vc = viewportController;
         this.interaction = interaction;
         this.edgeHitTester = new EdgeHitTester({ tolerance: DEFAULT_HIT_DISTANCE });
     }
 
-    /**
-     * Hit test - find shape at screen coordinates
-     * @param {number} x
-     * @param {number} y
-     * @returns {Shape|null}
-     */
-    hitTest(x, y) {
+    /** Hit test - find shape at screen coordinates. */
+    hitTest(x: number, y: number): any {
         const worldPos = this.vc.screenToWorld(x, y);
-        // z-sorted (bottom-to-top); walk reverse so the topmost piece under
-        // the cursor wins — matches the 2.5D paint order in ShapesPass.
         const resolvedShapes = this.context.shapeStore.getResolvedSorted();
 
         for (let i = resolvedShapes.length - 1; i >= 0; i--) {
@@ -71,26 +63,19 @@ export class HitTestService {
         return null;
     }
 
-    /**
-     * Hit test for edges - find edge at screen coordinates
-     * @param {number} x - Screen X coordinate
-     * @param {number} y - Screen Y coordinate
-     * @returns {{edge: import('../geometry/edge/index.js').Edge, position: import('../geometry/Vec.js').Vec, distance: number}|null}
-     */
-    hitTestEdge(x, y) {
+    /** Hit test for edges - find edge at screen coordinates. */
+    hitTestEdge(x: number, y: number): any {
         const worldPos = this.vc.screenToWorld(x, y);
         const shapeStore = this.context.shapeStore;
 
-        // Get edges from selected shapes (or all shapes if none selected)
-        let edges = [];
+        let edges: any[] = [];
         if (this.context.selection.selectedShapeIds.size > 0) {
             edges = shapeStore.getEdgesForSelectedShapes();
         } else if (shapeStore.getEdgesForAllShapes) {
             edges = shapeStore.getEdgesForAllShapes();
         } else {
-            // Fallback: edges from all shapes
             const resolvedShapes = shapeStore.getResolved();
-            resolvedShapes.forEach(shape => {
+            resolvedShapes.forEach((shape: any) => {
                 if (shape.toGeometryPath) {
                     const path = shape.toGeometryPath();
                     edges.push(...edgesFromItem(path));
@@ -98,17 +83,16 @@ export class HitTestService {
             });
         }
 
-        // Adjust tolerance based on zoom
         const tolerance = DEFAULT_HIT_DISTANCE / this.vc.viewport.zoom;
-        this.edgeHitTester.setEdges(edges);
+        this.edgeHitTester.setEdges(edges as any);
         this.edgeHitTester.tolerance = tolerance;
 
         return this.edgeHitTester.test(worldPos);
     }
 
-    hitTestRotationHandle(worldX, worldY) {
+    hitTestRotationHandle(worldX: number, worldY: number): { shapeId: string; center: { x: number; y: number } } | null {
         if (this.context.selection.selectedShapeIds.size !== 1) return null;
-        const shapeId = Array.from(this.context.selection.selectedShapeIds)[0];
+        const shapeId = Array.from(this.context.selection.selectedShapeIds)[0] as string;
         const shape = this.context.shapeStore.get(shapeId);
         if (!shape) return null;
         const resolved = this.context.bindingResolver.resolveShape(shape);
@@ -126,9 +110,9 @@ export class HitTestService {
         return null;
     }
 
-    hitTestResizeHandle(worldX, worldY) {
+    hitTestResizeHandle(worldX: number, worldY: number): { shapeId: string; handle: string; bounds: any; strategy: any } | null {
         if (this.context.selection.selectedShapeIds.size !== 1) return null;
-        const shapeId = Array.from(this.context.selection.selectedShapeIds)[0];
+        const shapeId = Array.from(this.context.selection.selectedShapeIds)[0] as string;
         const shape = this.context.shapeStore.get(shapeId);
         if (!shape || shape.type === 'line') return null;
 
@@ -151,11 +135,8 @@ export class HitTestService {
         return null;
     }
 
-    /**
-     * Hit test for path anchor points
-     * @returns {{shapeId: string, pointIndex: number}|null}
-     */
-    hitTestPathPoint(worldX, worldY, hitRadius = 12) {
+    /** Hit test for path anchor points. */
+    hitTestPathPoint(worldX: number, worldY: number, hitRadius: number = 12): { shapeId: string; pointIndex: number } | null {
         const shapes = this.context.shapeStore.getAll();
         for (const shape of shapes) {
             if (shape.type !== 'path') continue;
@@ -172,11 +153,8 @@ export class HitTestService {
         return null;
     }
 
-    /**
-     * Hit test for bezier handles
-     * @returns {{shapeId: string, pointIndex: number, handleType: 'handleIn'|'handleOut'}|null}
-     */
-    hitTestHandle(worldX, worldY, hitRadius = 6) {
+    /** Hit test for bezier handles. */
+    hitTestHandle(worldX: number, worldY: number, hitRadius: number = 6): { shapeId: string; pointIndex: number; handleType: 'handleIn' | 'handleOut' } | null {
         if (!this.interaction.handleEditState) return null;
 
         const shape = this.context.shapeStore.get(this.interaction.handleEditState.shapeId);
@@ -188,7 +166,6 @@ export class HitTestService {
 
         const handles = shape.getHandles(pointIndex);
 
-        // Check handleOut
         if (handles.handleOut) {
             const hx = point.x + handles.handleOut.x;
             const hy = point.y + handles.handleOut.y;
@@ -199,7 +176,6 @@ export class HitTestService {
             }
         }
 
-        // Check handleIn
         if (handles.handleIn) {
             const hx = point.x + handles.handleIn.x;
             const hy = point.y + handles.handleIn.y;
@@ -213,21 +189,15 @@ export class HitTestService {
         return null;
     }
 
-    /**
-     * Hit test for joinery handles (depth adjustment, alignment toggle)
-     * @param {number} worldX
-     * @param {number} worldY
-     * @returns {{edge: object, type: 'depth'|'align', handle: object}|null}
-     */
-    hitTestJoineryHandle(worldX, worldY) {
+    /** Hit test for joinery handles (depth adjustment, alignment toggle). */
+    hitTestJoineryHandle(worldX: number, worldY: number): { edge: any; type: 'depth' | 'align'; handle: any } | null {
         if (!this.interaction.joineryHandles || this.interaction.joineryHandles.length === 0) return null;
 
         for (const handle of this.interaction.joineryHandles) {
             const dx = worldX - handle.x;
             const dy = worldY - handle.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            // Use a scaled hit radius for better interaction
-            const scaledRadius = handle.radius / this.vc.viewport.zoom * this.vc.viewport.zoom; // Accounts for world coords
+            const scaledRadius = handle.radius / this.vc.viewport.zoom * this.vc.viewport.zoom;
             if (dist <= handle.radius * 1.5) {
                 return { edge: handle.edge, type: handle.type, handle };
             }
@@ -235,11 +205,8 @@ export class HitTestService {
         return null;
     }
 
-    /**
-     * Hit test for preview handles while drawing a path.
-     * @returns {{pointIndex: number, handleType: 'handleIn'|'handleOut'}|null}
-     */
-    hitTestPathDrawHandle(worldX, worldY, hitRadius = 12) {
+    /** Hit test for preview handles while drawing a path. */
+    hitTestPathDrawHandle(worldX: number, worldY: number, hitRadius: number = 12): { pointIndex: number; handleType: 'handleIn' | 'handleOut' } | null {
         if (!this.interaction.isPathDrawing) return null;
         const points = [...this.interaction.pathDrawPoints];
         const curveSegments = [...this.interaction.pathDrawCurveSegments];
@@ -305,11 +272,8 @@ export class HitTestService {
         return null;
     }
 
-    /**
-     * Hit test for path anchor points while drawing.
-     * @returns {{pointIndex: number}|null}
-     */
-    hitTestPathDrawAnchor(worldX, worldY, hitRadius = 10) {
+    /** Hit test for path anchor points while drawing. */
+    hitTestPathDrawAnchor(worldX: number, worldY: number, hitRadius: number = 10): { pointIndex: number } | null {
         if (!this.interaction.isPathDrawing) return null;
         const points = this.interaction.pathDrawPoints;
         for (let i = 0; i < points.length; i += 1) {

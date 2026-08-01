@@ -7,33 +7,21 @@ export class BindingResolver {
         this.parameterStore = parameterStore;
         this.expressionParser = expressionParser;
     }
-    /**
-     * Resolve a binding to a number value
-     * @param {Binding} binding
-     * @returns {number}
-     */
+    /** Resolve a binding to a number value. */
     resolveValue(binding) {
         if (!binding) {
             throw new Error('Binding is required');
         }
         return binding.resolve(this.parameterStore, this.expressionParser);
     }
-    /**
-     * Resolve all bindings in a shape
-     * @param {Shape} shape
-     * @returns {Shape}
-     */
+    /** Resolve all bindings in a shape. */
     resolveShape(shape) {
         if (!shape) {
             throw new Error('Shape is required');
         }
         return shape.resolve(this.parameterStore, this);
     }
-    /**
-     * Batch resolve multiple shapes
-     * @param {Array<Shape>} shapes
-     * @returns {Array<Shape>}
-     */
+    /** Batch resolve multiple shapes. */
     resolveAll(shapes) {
         if (!Array.isArray(shapes)) {
             throw new Error('Shapes must be an array');

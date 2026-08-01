@@ -1,40 +1,11 @@
 /**
- * @fileoverview KeyboardShortcutController — canvas keyboard shortcuts,
- * ported from the keyboard half of the old CanvasRenderer:
- *
- *   E             toggle edge-selection mode
- *   Escape        exit edge mode / cancel path drawing / exit handle editing /
- *                 deselect all (in that priority order)
- *   Enter         finish an in-progress path
- *   Arrow keys    nudge the selection (Shift = 10 units)
- *   Ctrl/Cmd+A    select all
- *   Ctrl/Cmd+D    duplicate selection
- *   Delete/Bksp   delete selection
- *
- * Selection reads/writes go through the store's selection API (SelectionModel
- * is the single source of truth — no local copies).
- *
- * Arrow-key nudging was generalized from the old per-type branching
- * (circle|polygon|star / rectangle / path only) to `shape.translate()` +
- * literal-binding sync over the schema's translate roles, so every shape
- * type is nudgeable and bound positions no longer snap back.
- *
- * Application-level shortcuts (save/open/undo/redo/new-tab) remain in
- * Application.setupKeyboardShortcuts().
- *
+ * @fileoverview KeyboardShortcutController — canvas keyboard shortcuts.
  * @module controllers/KeyboardShortcutController
  */
 import EventBus, { EVENTS } from '../events/EventBus.js';
 import { LiteralBinding } from '../models/Binding.js';
 import { DuplicateShapesCommand, RemoveShapesCommand, MutateShapesCommand } from '../commands/shapeCommands.js';
 export class KeyboardShortcutController {
-    /**
-     * @param {Object} deps
-     * @param {import('../views/canvas/CanvasView.js').CanvasView} deps.view
-     * @param {import('../core/SceneContext.js').SceneContext} deps.context
-     * @param {import('./InteractionState.js').InteractionState} deps.interaction
-     * @param {import('./CanvasInputController.js').CanvasInputController} deps.input
-     */
     constructor({ view, context, interaction, input }) {
         this.view = view;
         this.context = context;
@@ -76,14 +47,12 @@ export class KeyboardShortcutController {
             return;
         }
         const shapeStore = this.context.shapeStore;
-        // 'E' key: toggle edge selection mode
         if (e.key === 'e' || e.key === 'E') {
             e.preventDefault();
             const currentMode = shapeStore.getSelectionMode();
             shapeStore.setSelectionMode(currentMode === 'edge' ? 'shape' : 'edge');
             return;
         }
-        // Escape: exit edge selection mode first
         if (e.key === 'Escape') {
             if (shapeStore.getSelectionMode() === 'edge') {
                 shapeStore.setSelectionMode('shape');
@@ -103,7 +72,6 @@ export class KeyboardShortcutController {
                 return;
             }
         }
-        // Arrow keys: nudge selected shape(s)
         if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
             e.preventDefault();
             const ids = this.selectedIds();
@@ -118,17 +86,12 @@ export class KeyboardShortcutController {
                     dx = -step;
                 else if (e.key === 'ArrowRight')
                     dx = step;
-                // Capture before, nudge live, then record one coalescing
-                // MutateShapesCommand ("Nudge shapes") so a run of arrow taps
-                // is a single undo step.
                 const before = {};
                 ids.forEach(shapeId => {
                     const shape = shapeStore.get(shapeId);
                     if (!shape)
                         return;
                     before[shapeId] = shape.toJSON();
-                    // Schema-generic move + literal-binding sync (replaces the
-                    // old circle/rectangle/path-only branching).
                     shape.translate(dx, dy);
                     this.syncTranslatedBindings(shape);
                 });
@@ -137,26 +100,21 @@ export class KeyboardShortcutController {
                 this.view.requestRender();
             }
         }
-        // Ctrl+A: select all
         if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
             e.preventDefault();
             shapeStore.selectAll();
             this.view.requestRender();
         }
-        // Escape: exit handle editing or deselect all
         if (e.key === 'Escape') {
             if (ix.handleEditState) {
-                // First Escape: exit handle editing
                 ix.handleEditState = null;
                 ix.isDraggingHandle = false;
                 this.view.requestRender();
                 return;
             }
-            // Second Escape: deselect all
             shapeStore.clearSelection();
             this.view.requestRender();
         }
-        // Ctrl+D: duplicate selected (undoable, clone-based)
         if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
             e.preventDefault();
             const ids = this.selectedIds();
@@ -165,7 +123,6 @@ export class KeyboardShortcutController {
                 this.view.requestRender();
             }
         }
-        // Delete or Backspace: delete all selected shapes (undoable)
         if (e.key === 'Delete' || e.key === 'Backspace') {
             e.preventDefault();
             const ids = this.selectedIds();
@@ -178,7 +135,6 @@ export class KeyboardShortcutController {
     /**
      * Record an arrow-key nudge (already applied live) as a coalescing
      * MutateShapesCommand so a run of taps collapses to one undo step.
-     * @param {Object.<string, Object>} beforeSnapshots
      */
     recordNudge(beforeSnapshots) {
         const entries = {};

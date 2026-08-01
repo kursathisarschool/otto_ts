@@ -1,26 +1,5 @@
-/**
- * @fileoverview Ellipse -- an oval defined by independent horizontal and vertical radii.
- *
- * Unlike {@link Circle}, which uses the geometry library's native circle primitive, Ellipse
- * does NOT have a corresponding native primitive in the current geometry library.  It is
- * therefore approximated as a closed polygon of 64 sampled points.  64 segments produce a
- * visually indistinguishable curve at normal zoom levels while keeping the vertex count
- * low enough that bounding-box and hit-test calculations remain fast.
- *
- * Each sample point is computed by walking the unit circle at uniform angular intervals
- * and scaling the X and Y coordinates independently by radiusX and radiusY respectively.
- * This is the standard parametric form of an ellipse:
- *     x(t) = centerX + radiusX * cos(t)
- *     y(t) = centerY + radiusY * sin(t)
- * where t ranges from 0 to 2*PI.
- *
- * When radiusX equals radiusY the ellipse is a perfect circle, but Circle should be
- * preferred in that case for its exact primitive support.
- *
- * @module models/shapes/Ellipse
- */
 import { Shape } from './Shape.js';
-import { Anchor as GeoAnchor, Color as GeoColor, Fill as GeoFill, Path as GeoPath, Vec as GeoVec, styleContainsPoint } from '../../geometry/index.js';
+import { Color as GeoColor, Fill as GeoFill, Path as GeoPath, Vec as GeoVec, styleContainsPoint } from '../../geometry/index.js';
 /**
  * Opaque black fill for hit-testing.  See Circle.js for full explanation.
  * @type {import('../../geometry/index.js').Fill}

@@ -15,8 +15,8 @@
  *
  * @module models/shapes/RoundedRectangle
  */
-
-import { Shape } from './Shape.js';
+import { type Schema } from './schema.js';
+import { Bounds, Shape } from './Shape.js';
 import {
     Color as GeoColor,
     Fill as GeoFill,
@@ -31,7 +31,7 @@ import {
  * @constant
  * @private
  */
-const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
+const HIT_TEST_FILL: GeoFill = new GeoFill(new GeoColor(0, 0, 0, 1));
 
 /**
  * Rectangle with rounded corners.
@@ -44,7 +44,7 @@ const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
 export class RoundedRectangle extends Shape {
     static type = 'roundedRectangle';
 
-    static SCHEMA = {
+    static SCHEMA: Schema = {
         x: { type: 'number', default: (o) => o.position?.x ?? 0, bindable: true, translate: 'x', label: 'X' },
         y: { type: 'number', default: (o) => o.position?.y ?? 0, bindable: true, translate: 'y', label: 'Y' },
         width: { type: 'number', default: 50, bindable: true, min: 0, label: 'Width' },
@@ -56,7 +56,7 @@ export class RoundedRectangle extends Shape {
      * Compute the AABB by delegating to the geometry path.
      * @returns {{x: number, y: number, width: number, height: number}}
      */
-    getBounds() {
+    getBounds():Bounds {
         const path = this.toGeometryPath();
         const box = path.tightBoundingBox() || path.looseBoundingBox();
         if (!box) {
@@ -77,8 +77,8 @@ export class RoundedRectangle extends Shape {
      * @param {number} y - Y coordinate to test.
      * @returns {boolean} True if the point is inside or on the boundary.
      */
-    containsPoint(x, y) {
-        const path = this.toGeometryPath();
+    containsPoint(x: number, y: number): boolean {
+        const path:GeoPath = this.toGeometryPath();
         path.assignFill(HIT_TEST_FILL);
         return styleContainsPoint(path, new GeoVec(x, y));
     }
@@ -87,8 +87,8 @@ export class RoundedRectangle extends Shape {
      * Render the rounded rectangle outline onto the canvas.
      * @param {CanvasRenderingContext2D} ctx - The Otto canvas 2D context.
      */
-    render(ctx) {
-        const path = this.toGeometryPath();
+    render(ctx: CanvasRenderingContext2D): void {
+        const path:GeoPath = this.toGeometryPath();
         ctx.beginPath();
         path.toCanvasPath(ctx);
         ctx.stroke();
@@ -115,19 +115,19 @@ export class RoundedRectangle extends Shape {
      *
      * @returns {import('../../geometry/Path.js').Path} A closed GeoPath.
      */
-    toGeometryPath() {
+    toGeometryPath():GeoPath {
         /** Number of line segments used to approximate each 90-degree corner arc. */
-        const segmentsPerCorner = 8;
-        const points = [];
-        const w = this.width / 2;
-        const h = this.height / 2;
+        const segmentsPerCorner: number = 8;
+        const points: any[] = [];
+        const w: number = this.width / 2;
+        const h: number = this.height / 2;
         /** Centre X of the bounding rectangle. */
-        const cx = this.x + w;
+        const cx: number = this.x + w;
         /** Centre Y of the bounding rectangle. */
-        const cy = this.y + h;
+        const cy: number = this.y + h;
         /** Corner arc radius, clamped so opposing arcs can never overlap
          *  (was enforced in the old constructor; the geometry owns it now). */
-        const r = Math.min(this.cornerRadius, w, h);
+        const r: number = Math.min(this.cornerRadius, w, h);
 
         if (r <= 0) {
             return GeoPath.rect(this.x, this.y, this.width, this.height);
@@ -139,7 +139,7 @@ export class RoundedRectangle extends Shape {
 
         // Top-right corner
         for (let i = 0; i <= segmentsPerCorner; i++) {
-            const angle = -Math.PI / 2 + (i / segmentsPerCorner) * (Math.PI / 2);
+            const angle: number = -Math.PI / 2 + (i / segmentsPerCorner) * (Math.PI / 2);
             points.push(new GeoVec(cx + w - r + Math.cos(angle) * r, cy - h + r + Math.sin(angle) * r));
         }
 
@@ -149,7 +149,7 @@ export class RoundedRectangle extends Shape {
 
         // Bottom-right corner
         for (let i = 0; i <= segmentsPerCorner; i++) {
-            const angle = 0 + (i / segmentsPerCorner) * (Math.PI / 2);
+            const angle: number = 0 + (i / segmentsPerCorner) * (Math.PI / 2);
             points.push(new GeoVec(cx + w - r + Math.cos(angle) * r, cy + h - r + Math.sin(angle) * r));
         }
 
@@ -159,7 +159,7 @@ export class RoundedRectangle extends Shape {
 
         // Bottom-left corner
         for (let i = 0; i <= segmentsPerCorner; i++) {
-            const angle = Math.PI / 2 + (i / segmentsPerCorner) * (Math.PI / 2);
+            const angle: number = Math.PI / 2 + (i / segmentsPerCorner) * (Math.PI / 2);
             points.push(new GeoVec(cx - w + r + Math.cos(angle) * r, cy + h - r + Math.sin(angle) * r));
         }
 
@@ -169,7 +169,7 @@ export class RoundedRectangle extends Shape {
 
         // Top-left corner
         for (let i = 0; i <= segmentsPerCorner; i++) {
-            const angle = Math.PI + (i / segmentsPerCorner) * (Math.PI / 2);
+            const angle: number = Math.PI + (i / segmentsPerCorner) * (Math.PI / 2);
             points.push(new GeoVec(cx - w + r + Math.cos(angle) * r, cy - h + r + Math.sin(angle) * r));
         }
 

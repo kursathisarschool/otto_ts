@@ -1,75 +1,49 @@
 import { LocalStorageBackend } from './backends/LocalStorageBackend.js';
 import { IndexedDBBackend } from './backends/IndexedDBBackend.js';
 import { CloudStorageBackend } from './backends/CloudStorageBackend.js';
+import { StorageBackend } from './StorageBackend.js';
 
-/**
- * StorageFactory - Abstract Factory Pattern Implementation
- *
- * Creates storage backend instances based on type and configuration.
- * Provides automatic fallback when preferred backend is unavailable.
- *
- * Usage:
- * ```javascript
- * // Create specific backend
- * const backend = StorageFactory.create('indexedDB', { namespace: 'myApp' });
- *
- * // Create with automatic fallback
- * const backend = await StorageFactory.createWithFallback(['indexedDB', 'localStorage']);
- *
- * // Use backend
- * await backend.save('scene1', sceneData);
- * const data = await backend.load('scene1');
- * ```
- */
+interface BackendInfo {
+    type: string;
+    available: boolean;
+    maxSize?: number;
+    usedSize?: number;
+    error?: string;
+}
+
 export class StorageFactory {
-    // Backend type registry
-    static _backends = new Map([
-        ['localStorage', LocalStorageBackend],
-        ['indexedDB', IndexedDBBackend],
-        ['cloud', CloudStorageBackend]
-    ]);
+    static _backends: Map<string, typeof StorageBackend> = new Map();
 
-    /**
-     * Register a custom storage backend type
-     * @param {string} type - Backend type identifier
-     * @param {Class} BackendClass - Backend class (must extend StorageBackend)
-     */
-    static register(type, BackendClass) {
+    static {
+        this._backends.set('localStorage', LocalStorageBackend);
+        this._backends.set('indexedDB', IndexedDBBackend);
+        this._backends.set('cloud', CloudStorageBackend);
+    }
+
+    // ... register, unregister, getAvailableTypes, isRegistered, create, vs. hep aynı kalıyor
+
+    /** Register a custom storage backend type. */
+    static register(type: string, BackendClass: typeof StorageBackend): void {
         this._backends.set(type.toLowerCase(), BackendClass);
     }
 
-    /**
-     * Unregister a storage backend type
-     * @param {string} type
-     */
-    static unregister(type) {
+    /** Unregister a storage backend type. */
+    static unregister(type: string): void {
         this._backends.delete(type.toLowerCase());
     }
 
-    /**
-     * Get available backend types
-     * @returns {Array<string>}
-     */
-    static getAvailableTypes() {
+    /** Get available backend types. */
+    static getAvailableTypes(): string[] {
         return Array.from(this._backends.keys());
     }
 
-    /**
-     * Check if a backend type is registered
-     * @param {string} type
-     * @returns {boolean}
-     */
-    static isRegistered(type) {
+    /** Check if a backend type is registered. */
+    static isRegistered(type: string): boolean {
         return this._backends.has(type.toLowerCase());
     }
 
-    /**
-     * Create a storage backend instance
-     * @param {string} type - Backend type ('localStorage', 'indexedDB', 'cloud')
-     * @param {Object} options - Backend configuration
-     * @returns {StorageBackend}
-     */
-    static create(type, options = {}) {
+    /** Create a storage backend instance. */
+    static create(type: string, options: any = {}): StorageBackend {
         const normalizedType = type.toLowerCase();
         const BackendClass = this._backends.get(normalizedType);
 
@@ -81,17 +55,11 @@ export class StorageFactory {
             );
         }
 
-        return new BackendClass(options);
+        return new (BackendClass as any)(options);
     }
 
-    /**
-     * Create a storage backend with automatic fallback
-     * Tries each backend type in order until one is available
-     * @param {Array<string>} preferences - Backend types in order of preference
-     * @param {Object} options - Backend configuration
-     * @returns {Promise<StorageBackend>}
-     */
-    static async createWithFallback(preferences = ['indexedDB', 'localStorage'], options = {}) {
+    /** Create a storage backend with automatic fallback. */
+    static async createWithFallback(preferences: string[] = ['indexedDB', 'localStorage'], options: any = {}): Promise<StorageBackend> {
         for (const type of preferences) {
             try {
                 const backend = this.create(type, options);
@@ -103,7 +71,7 @@ export class StorageFactory {
                 } else {
                     console.log(`${type} storage not available, trying next...`);
                 }
-            } catch (error) {
+            } catch (error: any) {
                 console.warn(`Failed to create ${type} backend:`, error.message);
             }
         }
@@ -111,18 +79,11 @@ export class StorageFactory {
         throw new Error('No storage backend available');
     }
 
-    /**
-     * Create the best available backend based on data size
-     * Uses localStorage for small data, IndexedDB for larger data
-     * @param {number} estimatedSize - Estimated data size in bytes
-     * @param {Object} options - Backend configuration
-     * @returns {Promise<StorageBackend>}
-     */
-    static async createForSize(estimatedSize, options = {}) {
-        const localStorageLimit = 4 * 1024 * 1024; // 4MB to be safe
+    /** Create the best available backend based on data size. */
+    static async createForSize(estimatedSize: number, options: any = {}): Promise<StorageBackend> {
+        const localStorageLimit = 4 * 1024 * 1024;
 
         if (estimatedSize > localStorageLimit) {
-            // Try IndexedDB for large data
             try {
                 const indexedDB = this.create('indexedDB', options);
                 if (await indexedDB.isAvailable()) {
@@ -134,7 +95,6 @@ export class StorageFactory {
             }
         }
 
-        // Fall back to localStorage for small data
         const localStorage = this.create('localStorage', options);
         if (await localStorage.isAvailable()) {
             return localStorage;
@@ -143,12 +103,9 @@ export class StorageFactory {
         throw new Error('No suitable storage backend available');
     }
 
-    /**
-     * Get information about all backends
-     * @returns {Promise<Array<Object>>}
-     */
-    static async getBackendInfo() {
-        const info = [];
+    /** Get information about all backends. */
+    static async getBackendInfo(): Promise<BackendInfo[]> {
+        const info: BackendInfo[] = [];
 
         for (const type of this._backends.keys()) {
             try {
@@ -161,7 +118,7 @@ export class StorageFactory {
                     maxSize: available ? await backend.getMaxSize() : 0,
                     usedSize: available ? await backend.getUsedSize() : 0
                 });
-            } catch (error) {
+            } catch (error: any) {
                 info.push({
                     type,
                     available: false,
@@ -176,31 +133,21 @@ export class StorageFactory {
 
 /**
  * MultiBackendStorage - Combines multiple backends with sync
- *
- * Writes to primary backend and optionally syncs to secondary.
- * Useful for local + cloud sync scenarios.
  */
 export class MultiBackendStorage {
-    /**
-     * @param {StorageBackend} primary - Primary storage backend
-     * @param {StorageBackend} secondary - Secondary/backup backend (optional)
-     */
-    constructor(primary, secondary = null) {
+    primary: StorageBackend;
+    secondary: StorageBackend | null;
+
+    constructor(primary: StorageBackend, secondary: StorageBackend | null = null) {
         this.primary = primary;
         this.secondary = secondary;
     }
 
-    /**
-     * Save to primary and optionally sync to secondary
-     * @param {string} key
-     * @param {*} data
-     * @returns {Promise<boolean>}
-     */
-    async save(key, data) {
+    /** Save to primary and optionally sync to secondary. */
+    async save(key: string, data: any): Promise<boolean> {
         const primaryResult = await this.primary.save(key, data);
 
         if (this.secondary) {
-            // Sync to secondary in background
             this.secondary.save(key, data).catch(error => {
                 console.warn('Secondary storage sync failed:', error);
             });
@@ -209,18 +156,13 @@ export class MultiBackendStorage {
         return primaryResult;
     }
 
-    /**
-     * Load from primary, falling back to secondary if not found
-     * @param {string} key
-     * @returns {Promise<*>}
-     */
-    async load(key) {
+    /** Load from primary, falling back to secondary if not found. */
+    async load(key: string): Promise<any> {
         let data = await this.primary.load(key);
 
         if (data === null && this.secondary) {
             data = await this.secondary.load(key);
 
-            // If found in secondary, restore to primary
             if (data !== null) {
                 console.log('Restored data from secondary storage');
                 await this.primary.save(key, data);
@@ -230,12 +172,8 @@ export class MultiBackendStorage {
         return data;
     }
 
-    /**
-     * Delete from both backends
-     * @param {string} key
-     * @returns {Promise<boolean>}
-     */
-    async delete(key) {
+    /** Delete from both backends. */
+    async delete(key: string): Promise<boolean> {
         const primaryResult = await this.primary.delete(key);
 
         if (this.secondary) {
@@ -245,28 +183,18 @@ export class MultiBackendStorage {
         return primaryResult;
     }
 
-    /**
-     * Check existence in primary
-     * @param {string} key
-     * @returns {Promise<boolean>}
-     */
-    async exists(key) {
+    /** Check existence in primary. */
+    async exists(key: string): Promise<boolean> {
         return this.primary.exists(key);
     }
 
-    /**
-     * List keys from primary
-     * @returns {Promise<Array<string>>}
-     */
-    async listKeys() {
+    /** List keys from primary. */
+    async listKeys(): Promise<string[]> {
         return this.primary.listKeys();
     }
 
-    /**
-     * Clear both backends
-     * @returns {Promise<boolean>}
-     */
-    async clear() {
+    /** Clear both backends. */
+    async clear(): Promise<boolean> {
         const primaryResult = await this.primary.clear();
 
         if (this.secondary) {

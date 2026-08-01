@@ -5,7 +5,6 @@
  * Note: Boolean operations require PathKit (not yet implemented).
  */
 import { Anchor } from './Anchor.js';
-import { BoundingBox } from './BoundingBox.js';
 import { Geometry } from './Geometry.js';
 import { Group } from './Group.js';
 import { Path } from './Path.js';
@@ -18,61 +17,35 @@ import { computeTightBoundingBox, deletePkPath, emptyPkPath, fromPkPath, getPath
  * Useful for compound shapes like letters with holes.
  *
  * @example
- * // Create a shape from multiple paths
  * const outer = Path.rect(0, 0, 100, 100);
  * const inner = Path.rect(20, 20, 60, 60);
  * const frame = new Shape([outer, inner]);
- *
- * @extends Geometry
  */
 export class Shape extends Geometry {
-    /**
-     * Create a shape.
-     * @param {Path[]} [paths=[]] - Array of paths
-     * @param {Stroke} [stroke] - Stroke style
-     * @param {Fill} [fill] - Fill style
-     */
     constructor(paths = [], stroke, fill) {
         super();
-        /** @type {Path[]} */
         this.paths = paths;
-        /** @type {Stroke|undefined} */
         this.stroke = stroke;
-        /** @type {Fill|undefined} */
         this.fill = fill;
     }
-    /**
-     * Create a copy of this shape.
-     * @returns {Shape}
-     */
+    /** Create a copy of this shape. */
     clone() {
         return new Shape(this.paths.map((path) => path.clone()), this.stroke?.clone(), this.fill?.clone());
     }
-    /**
-     * Check if this shape is valid.
-     * @returns {boolean}
-     */
+    /** Check if this shape is valid. */
     isValid() {
         return (Array.isArray(this.paths) &&
             this.paths.every(Path.isValid) &&
             (this.stroke === undefined || Stroke.isValid(this.stroke)) &&
             (this.fill === undefined || Fill.isValid(this.fill)));
     }
-    /**
-     * Apply an affine transformation.
-     * @param {import('./Matrix.js').AffineMatrix} affineMatrix
-     * @returns {Shape} this
-     */
+    /** Apply an affine transformation. */
     affineTransform(affineMatrix) {
         for (let path of this.paths)
             path.affineTransform(affineMatrix);
         return this;
     }
-    /**
-     * Apply an affine transformation without translation.
-     * @param {import('./Matrix.js').AffineMatrix} affineMatrix
-     * @returns {Shape} this
-     */
+    /** Apply an affine transformation without translation. */
     affineTransformWithoutTranslation(affineMatrix) {
         for (let path of this.paths)
             path.affineTransformWithoutTranslation(affineMatrix);
@@ -81,94 +54,45 @@ export class Shape extends Geometry {
     // =========================================================================
     // Collection methods
     // =========================================================================
-    /**
-     * Get all shapes (returns self in array).
-     * @returns {Shape[]}
-     */
     allShapes() {
         return [this];
     }
-    /**
-     * Get all paths.
-     * @returns {Path[]}
-     */
     allPaths() {
         return [...this.paths];
     }
-    /**
-     * Get all anchors.
-     * @returns {import('./Anchor.js').Anchor[]}
-     */
     allAnchors() {
         return this.paths.flatMap((p) => p.anchors);
     }
-    /**
-     * Get all shapes and orphaned paths.
-     * @returns {Shape[]}
-     */
     allShapesAndOrphanedPaths() {
         return [this];
     }
-    /**
-     * Get all intersectable geometry.
-     * @returns {Path[]}
-     */
     allIntersectables() {
         return [...this.paths];
     }
     // =========================================================================
     // Style methods
     // =========================================================================
-    /**
-     * Assign a fill style.
-     * @param {Fill} fill
-     * @returns {Shape} this
-     */
     assignFill(fill) {
         this.fill = fill.clone();
         return this;
     }
-    /**
-     * Remove fill style.
-     * @returns {Shape} this
-     */
     removeFill() {
         this.fill = undefined;
         return this;
     }
-    /**
-     * Assign a stroke style.
-     * @param {Stroke} stroke
-     * @returns {Shape} this
-     */
     assignStroke(stroke) {
         this.stroke = stroke.clone();
         return this;
     }
-    /**
-     * Remove stroke style.
-     * @returns {Shape} this
-     */
     removeStroke() {
         this.stroke = undefined;
         return this;
     }
-    /**
-     * Assign both fill and stroke.
-     * @param {Fill} fill
-     * @param {Stroke} stroke
-     * @returns {Shape} this
-     */
     assignStyle(fill, stroke) {
         this.stroke = stroke?.clone();
         this.fill = fill?.clone();
         return this;
     }
-    /**
-     * Copy style from another geometry.
-     * @param {Geometry} item
-     * @returns {Shape} this
-     */
     copyStyle(item) {
         if (item instanceof Path || item instanceof Shape) {
             this.stroke = item.stroke?.clone();
@@ -176,11 +100,6 @@ export class Shape extends Geometry {
         }
         return this;
     }
-    /**
-     * Scale stroke width.
-     * @param {number} scaleFactor
-     * @returns {Shape} this
-     */
     scaleStroke(scaleFactor) {
         if (this.stroke && !this.stroke.hairline) {
             this.stroke.width *= scaleFactor;
@@ -190,26 +109,12 @@ export class Shape extends Geometry {
     // =========================================================================
     // SVG
     // =========================================================================
-    /**
-     * Convert to SVG path string.
-     * @param {Object} [options]
-     * @returns {string}
-     */
     toSVGPathString(options) {
         return this.paths.map((path) => path.toSVGPathString(options)).join('');
     }
-    /**
-     * Convert to SVG element string.
-     * @param {import('./Geometry.js').ExportOptions} [options]
-     * @returns {string}
-     */
     toSVGString(options) {
         return pathOrShapeToSVGString(this, options);
     }
-    /**
-     * Append all paths to a canvas context.
-     * @param {CanvasRenderingContext2D} ctx
-     */
     toCanvasPath(ctx) {
         if (!ctx)
             return;
@@ -218,10 +123,6 @@ export class Shape extends Geometry {
     // =========================================================================
     // Bounding Box
     // =========================================================================
-    /**
-     * Get loose bounding box.
-     * @returns {BoundingBox|undefined}
-     */
     looseBoundingBox() {
         const { paths } = this;
         let box;
@@ -238,10 +139,6 @@ export class Shape extends Geometry {
         }
         return box;
     }
-    /**
-     * Get tight bounding box.
-     * @returns {BoundingBox|undefined}
-     */
     tightBoundingBox() {
         const pk = getPathKit();
         if (pk) {
@@ -249,40 +146,19 @@ export class Shape extends Geometry {
         }
         return this.looseBoundingBox();
     }
-    /**
-     * Check if contained by bounding box.
-     * @param {BoundingBox} box
-     * @returns {boolean}
-     */
     isContainedByBoundingBox(box) {
         const tight = this.tightBoundingBox();
         return tight ? box.containsBoundingBox(tight) : false;
     }
-    /**
-     * Check if intersected by bounding box.
-     * @param {BoundingBox} box
-     * @returns {boolean}
-     */
     isIntersectedByBoundingBox(box) {
         return this.paths.some((path) => path.isIntersectedByBoundingBox(box));
     }
-    /**
-     * Check if overlapped by bounding box.
-     * @param {BoundingBox} box
-     * @returns {boolean}
-     */
     isOverlappedByBoundingBox(box) {
         return this.paths.some((path) => path.isOverlappedByBoundingBox(box));
     }
     // =========================================================================
     // Closest Point
     // =========================================================================
-    /**
-     * Find closest point within distance.
-     * @param {number} maxDistance
-     * @param {Vec} point
-     * @returns {import('./Geometry.js').ClosestPointResult}
-     */
     closestPointWithinDistanceToPoint(maxDistance, point) {
         const { paths } = this;
         let closestResult = { distance: Infinity };
@@ -296,10 +172,6 @@ export class Shape extends Geometry {
         }
         return closestResult;
     }
-    /**
-     * Reverse all paths.
-     * @returns {Shape} this
-     */
     reverse() {
         this.paths.forEach((path) => path.reverse());
         this.paths.reverse();
@@ -308,19 +180,12 @@ export class Shape extends Geometry {
     // =========================================================================
     // Static Methods
     // =========================================================================
-    /**
-     * Validate that value is a valid Shape.
-     * @param {*} a
-     * @returns {boolean}
-     */
     static isValid(a) {
         return a instanceof Shape && a.isValid();
     }
     /**
      * Create shape from SVG path string.
      * Note: Requires PathKit for full support. Basic implementation.
-     * @param {string} svgPathString
-     * @returns {Shape}
      */
     static fromSVGPathString(svgPathString) {
         const pk = getPathKit();
@@ -376,18 +241,12 @@ export class Shape extends Geometry {
         }
         return new Shape(paths);
     }
-    /**
-     * Boolean union of geometries.
-     * Note: Requires PathKit. Stub implementation.
-     * @param {Geometry[]} items
-     * @param {'evenodd'|'winding'} [fillRule='evenodd']
-     * @returns {Shape}
-     */
+    /** Boolean union of geometries. Note: Requires PathKit. Stub implementation. */
     static booleanUnion(items, fillRule = 'evenodd') {
         const pk = getPathKit();
         if (!pk) {
             console.warn('Shape.booleanUnion requires PathKit - returning combined paths');
-            const paths = items.flatMap((item) => item.allPaths().map(p => p.clone()));
+            const paths = items.flatMap((item) => item.allPaths().map((p) => p.clone()));
             return new Shape(paths);
         }
         const unionItems = items.flatMap((item) => item.allShapesAndOrphanedPaths());
@@ -400,12 +259,7 @@ export class Shape extends Geometry {
         }
         return fromPkPath(resultPkPath, true);
     }
-    /**
-     * Boolean intersection of geometries.
-     * Note: Requires PathKit. Stub implementation.
-     * @param {Geometry[]} items
-     * @returns {Shape}
-     */
+    /** Boolean intersection of geometries. Note: Requires PathKit. Stub implementation. */
     static booleanIntersect(items) {
         const pk = getPathKit();
         if (!pk) {
@@ -427,12 +281,7 @@ export class Shape extends Geometry {
             return new Shape();
         return fromPkPath(resultPkPath, true);
     }
-    /**
-     * Boolean difference of geometries.
-     * Note: Requires PathKit. Stub implementation.
-     * @param {Geometry[]} items
-     * @returns {Shape}
-     */
+    /** Boolean difference of geometries. Note: Requires PathKit. Stub implementation. */
     static booleanDifference(items) {
         const pk = getPathKit();
         if (!pk) {
@@ -454,17 +303,7 @@ export class Shape extends Geometry {
             return new Shape();
         return fromPkPath(resultPkPath, true);
     }
-    /**
-     * Create stroked shape from geometry.
-     * Note: Requires PathKit. Stub implementation.
-     * @param {Geometry} item
-     * @param {Object} [opts]
-     * @param {number} [opts.width=1]
-     * @param {'butt'|'round'|'square'} [opts.cap='butt']
-     * @param {'miter'|'round'|'bevel'} [opts.join='miter']
-     * @param {number} [opts.miterLimit=4]
-     * @returns {Shape}
-     */
+    /** Create stroked shape from geometry. Note: Requires PathKit. Stub implementation. */
     static stroke(item, opts = {}) {
         let { width, miterLimit, join, cap } = opts;
         if (width === undefined)
@@ -478,7 +317,7 @@ export class Shape extends Geometry {
         const pk = getPathKit();
         if (!pk) {
             console.warn('Shape.stroke requires PathKit - not implemented');
-            return new Shape(item.allPaths().map(p => p.clone()));
+            return new Shape(item.allPaths().map((p) => p.clone()));
         }
         const pkPath = toPkPath(item);
         performStroke(pkPath, width, cap, join, miterLimit);
@@ -486,11 +325,7 @@ export class Shape extends Geometry {
     }
 }
 Shape.displayName = 'Shape';
-/**
- * Pre-union helper for boolean operations.
- * @param {Geometry[]} items
- * @returns {any[]}
- */
+/** Pre-union helper for boolean operations. */
 const preUnion = (items) => {
     return items.map((item) => {
         if (item instanceof Group) {

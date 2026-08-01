@@ -1,76 +1,20 @@
 /**
  * @fileoverview SelectionModel — the single source of truth for everything
- * "selected" in a scene: shape selection (single + multi), edge selection,
- * the shape/edge selection mode, and hover state.
- *
- * Before this class existed, selection lived in three places at once
- * (ShapeStore's dual selectedShapeId/selectedShapeIds, CanvasRenderer's
- * private copies, PropertiesPanel's cached selectedShape) that were manually
- * re-synced. SelectionModel is now the one owner; ShapeStore exposes
- * backward-compatible delegates so existing call sites keep working during
- * the MVC migration.
- *
- * Event payloads are kept byte-compatible with the old ShapeStore emits:
- * SHAPE_SELECTED / EDGE_SELECTED / SELECTION_MODE_CHANGED / EDGE_HOVERED /
- * SHAPE_HOVERED subscribers do not need changes.
- *
- * The model needs to answer "does this shape exist?" and "what shape object
- * has this id?" when validating selections and building event payloads, but
- * it must not own shapes — so those lookups are injected as functions.
- *
- * Selection is deliberately NOT undoable (industry convention); commands
- * that delete shapes restore selection as part of their own undo instead.
- *
+ * "selected" in a scene.
  * @module core/SelectionModel
  */
 import EventBus, { EVENTS } from '../events/EventBus.js';
 import { EdgeSelection } from '../geometry/edge/index.js';
 export class SelectionModel {
-    /**
-     * @param {Object} deps
-     * @param {(id: string) => ?Object} deps.getShape - Look up a live shape by
-     *   id (used for event payloads and existence validation).
-     * @param {() => string[]} deps.getAllIds - All shape ids in the scene
-     *   (used by selectAll()).
-     */
     constructor({ getShape, getAllIds }) {
         this.getShape = getShape;
         this.getAllIds = getAllIds;
         this.eventBus = EventBus;
-        /**
-         * The full set of currently-selected shape IDs — the authoritative
-         * multi-selection.
-         * @type {Set<string>}
-         */
         this.selectedShapeIds = new Set();
-        /**
-         * The "primary" selected shape id: the most-recently-added member of
-         * the set (drives the Properties Panel), or null when empty.
-         * @type {string|null}
-         */
         this.primaryId = null;
-        /**
-         * Edge-selection bookkeeping delegate (add/remove/toggle/has).
-         * @type {EdgeSelection}
-         */
         this.edgeSelection = new EdgeSelection();
-        /**
-         * 'shape' — clicks select whole shapes (default);
-         * 'edge' — clicks select individual edges for joinery assignment.
-         * Switching back to 'shape' clears the edge selection.
-         * @type {'shape'|'edge'}
-         */
         this.selectionMode = 'shape';
-        /**
-         * The edge (plus cursor position) under the pointer, or null.
-         * Ephemeral; never serialized.
-         * @type {{edge: Object, position: Object}|null}
-         */
         this.hoveredEdge = null;
-        /**
-         * The id of the shape under the pointer, or null. Ephemeral.
-         * @type {string|null}
-         */
         this.hoveredShapeId = null;
     }
     // ── Shape selection ─────────────────────────────────────────────────

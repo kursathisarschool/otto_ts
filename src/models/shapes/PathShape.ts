@@ -1,4 +1,5 @@
-import { Shape } from './Shape.js';
+import { type Schema } from './schema.js';
+import { Shape, type Bounds } from './Shape.js';
 import {
     Anchor as GeoAnchor,
     Color as GeoColor,
@@ -9,15 +10,20 @@ import {
     styleContainsPoint
 } from '../../geometry/index.js';
 
-const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
-const HIT_TEST_STROKE = new GeoStroke(new GeoColor(0, 0, 0, 1), false, 6, 'centered', 'round', 'round', 4);
+const HIT_TEST_FILL: GeoFill = new GeoFill(new GeoColor(0, 0, 0, 1));
+const HIT_TEST_STROKE: GeoStroke = new GeoStroke(new GeoColor(0, 0, 0, 1), false, 6, 'centered', 'round', 'round', 4);
+
+interface HandleEntry {
+    handleIn: { x: number; y: number } | null;
+    handleOut: { x: number; y: number } | null;
+}
 
 /** Deep-copy a handles array ({handleIn, handleOut} offsets per point) or null. */
-function copyHandles(handles) {
+function copyHandles(handles: any): HandleEntry[] | null {
     if (!Array.isArray(handles)) {
         return null;
     }
-    return handles.map(h => ({
+    return handles.map((h: any) => ({
         handleIn: h?.handleIn ? { x: h.handleIn.x, y: h.handleIn.y } : null,
         handleOut: h?.handleOut ? { x: h.handleOut.x, y: h.handleOut.y } : null
     }));
@@ -25,20 +31,11 @@ function copyHandles(handles) {
 
 /**
  * Freeform path shape backed by geometry Path.
- *
- * Geometry lives in the `points` array (plus per-segment curve flags and
- * optional custom bezier handles), not in scalar properties — so this class
- * overrides {@link Shape#translate} to move the points, and its non-scalar
- * schema properties use `copy`/`serialize` descriptors for deep copying.
- *
- * The legacy `smooth` construction option is honoured through the
- * `curveSegments` default: when no explicit flags are given, every segment
- * gets `!!options.smooth`.
  */
 export class PathShape extends Shape {
     static type = 'path';
 
-    static SCHEMA = {
+    static SCHEMA: Schema = {
         strokeWidth: {
             type: 'number', default: 2, bindable: true, alwaysSerialize: true,
             min: 0.1, label: 'Stroke Width'
@@ -46,15 +43,15 @@ export class PathShape extends Shape {
         points: {
             type: 'points',
             default: () => [],
-            copy: (pts) => (Array.isArray(pts) ? pts.map(p => ({ x: p.x, y: p.y })) : []),
-            serialize: (pts) => pts.map(p => ({ x: p.x, y: p.y }))
+            copy: (pts: any) => (Array.isArray(pts) ? pts.map((p: any) => ({ x: p.x, y: p.y })) : []),
+            serialize: (pts: any) => pts.map((p: any) => ({ x: p.x, y: p.y }))
         },
         closed: { type: 'boolean', default: false },
         curveSegments: {
             type: 'segments',
-            default: (o) => new Array(Math.max(0, (Array.isArray(o.points) ? o.points.length : 0) - 1)).fill(!!o.smooth),
-            copy: (v) => (Array.isArray(v) ? v.map(Boolean) : []),
-            serialize: (v) => (Array.isArray(v) ? v.map(Boolean) : [])
+            default: (o: any) => new Array(Math.max(0, (Array.isArray(o.points) ? o.points.length : 0) - 1)).fill(!!o.smooth),
+            copy: (v: any) => (Array.isArray(v) ? v.map(Boolean) : []),
+            serialize: (v: any) => (Array.isArray(v) ? v.map(Boolean) : [])
         },
         handles: {
             type: 'handles',
@@ -65,7 +62,7 @@ export class PathShape extends Shape {
         }
     };
 
-    getBounds() {
+    getBounds(): Bounds {
         const path = this.toGeometryPath();
         const box = path.tightBoundingBox() || path.looseBoundingBox();
         if (!box) {
@@ -79,7 +76,7 @@ export class PathShape extends Shape {
         };
     }
 
-    containsPoint(x, y) {
+    containsPoint(x: number, y: number): boolean {
         const path = this.toGeometryPath();
         if (this.closed) {
             path.assignFill(HIT_TEST_FILL);
@@ -91,7 +88,7 @@ export class PathShape extends Shape {
         return styleContainsPoint(path, new GeoVec(x, y));
     }
 
-    render(ctx) {
+    render(ctx: CanvasRenderingContext2D): void {
         const path = this.toGeometryPath();
         ctx.save();
         ctx.beginPath();
@@ -104,27 +101,15 @@ export class PathShape extends Shape {
         ctx.restore();
     }
 
-    /**
-     * Move the path by shifting every point. Custom handles are offsets
-     * relative to their points, so they need no adjustment.
-     *
-     * @param {number} dx
-     * @param {number} dy
-     * @returns {PathShape} this
-     */
-    translate(dx, dy) {
+    /** Move the path by shifting every point. */
+    translate(dx: number, dy: number): this {
         super.translate(dx, dy);
-        this.points = this.points.map(p => ({ x: p.x + dx, y: p.y + dy }));
+        this.points = this.points.map((p: any) => ({ x: p.x + dx, y: p.y + dy }));
         return this;
     }
 
-    /**
-     * Set a custom handle for a point
-     * @param {number} pointIndex - Index of the point
-     * @param {'handleIn'|'handleOut'} handleType - Which handle to set
-     * @param {{x: number, y: number}} value - Handle offset relative to the point
-     */
-    setHandle(pointIndex, handleType, value) {
+    /** Set a custom handle for a point. */
+    setHandle(pointIndex: number, handleType: 'handleIn' | 'handleOut', value: { x: number; y: number } | null): void {
         if (!this.handles) {
             this.handles = this.points.map(() => ({ handleIn: null, handleOut: null }));
         }
@@ -136,13 +121,8 @@ export class PathShape extends Shape {
         }
     }
 
-    /**
-     * Get handle positions for a point (returns calculated handles if no custom ones)
-     * @param {number} pointIndex - Index of the point
-     * @returns {{handleIn: {x,y}|null, handleOut: {x,y}|null}}
-     */
-    getHandles(pointIndex) {
-        // Return custom handles if set
+    /** Get handle positions for a point (returns calculated handles if no custom ones). */
+    getHandles(pointIndex: number): HandleEntry {
         if (this.handles && this.handles[pointIndex]) {
             const h = this.handles[pointIndex];
             if (h.handleIn || h.handleOut) {
@@ -153,31 +133,26 @@ export class PathShape extends Shape {
             }
         }
 
-        // Calculate default handles based on curve segments
         return this.calculateDefaultHandles(pointIndex);
     }
 
-    /**
-     * Calculate default handles for a point based on neighboring segments
-     */
-    calculateDefaultHandles(pointIndex) {
-        const result = { handleIn: null, handleOut: null };
+    /** Calculate default handles for a point based on neighboring segments. */
+    calculateDefaultHandles(pointIndex: number): HandleEntry {
+        const result: HandleEntry = { handleIn: null, handleOut: null };
         const n = this.points.length;
         if (n < 2) return result;
 
         const segmentCount = this.closed ? n : n - 1;
 
-        // Check if segment before this point is curved (needs handleIn)
         const prevSegIdx = this.closed ? (pointIndex - 1 + n) % n : pointIndex - 1;
         const hasPrevCurve = prevSegIdx >= 0 && prevSegIdx < segmentCount && this.curveSegments[prevSegIdx];
 
-        // Check if segment after this point is curved (needs handleOut)
         const nextSegIdx = pointIndex;
         const hasNextCurve = nextSegIdx >= 0 && nextSegIdx < segmentCount && this.curveSegments[nextSegIdx];
 
         if (!hasPrevCurve && !hasNextCurve) return result;
 
-        const getPoint = (idx) => {
+        const getPoint = (idx: number): { x: number; y: number } => {
             if (this.closed) {
                 return this.points[(idx + n) % n];
             }
@@ -188,19 +163,16 @@ export class PathShape extends Shape {
         const pPrev = getPoint(pointIndex - 1);
         const pNext = getPoint(pointIndex + 1);
 
-        // Calculate segment to next point
         const dxNext = pNext.x - p.x;
         const dyNext = pNext.y - p.y;
         const lenNext = Math.sqrt(dxNext * dxNext + dyNext * dyNext);
 
-        // Calculate segment from prev point
         const dxPrev = p.x - pPrev.x;
         const dyPrev = p.y - pPrev.y;
         const lenPrev = Math.sqrt(dxPrev * dxPrev + dyPrev * dyPrev);
 
         if (hasNextCurve && lenNext > 0.001) {
             const handleLen = lenNext / 3;
-            // Tangent direction through this point
             const tangentX = pNext.x - pPrev.x;
             const tangentY = pNext.y - pPrev.y;
             const tangentLen = Math.sqrt(tangentX * tangentX + tangentY * tangentY);
@@ -239,22 +211,26 @@ export class PathShape extends Shape {
         return result;
     }
 
-    toGeometryPath() {
+    toGeometryPath(): GeoPath {
         return PathShape.buildGeometryPath(this.points, this.closed, this.curveSegments, false, this.handles);
     }
 
-    static buildGeometryPath(points, closed, curveSegments, smooth = false, customHandles = null) {
+    static buildGeometryPath(
+        points: { x: number; y: number }[],
+        closed: boolean,
+        curveSegments: boolean[],
+        smooth: boolean = false,
+        customHandles: (HandleEntry | null)[] | null = null
+    ): GeoPath {
         if (!points || points.length === 0) {
             return new GeoPath([]);
         }
         const vecs = points.map((p) => new GeoVec(p.x, p.y));
 
-        // Need at least 2 points for a segment
         if (vecs.length < 2) {
             return GeoPath.fromPoints(vecs, closed);
         }
 
-        // Check if we have any curves to draw or custom handles
         const segmentCount = closed ? vecs.length : vecs.length - 1;
         const segmentFlags = Array.isArray(curveSegments)
             ? curveSegments.slice(0, segmentCount).map(Boolean)
@@ -262,47 +238,39 @@ export class PathShape extends Shape {
 
         const hasCustomHandles = customHandles && customHandles.some(h => h?.handleIn || h?.handleOut);
 
-        // If no curve segments and no custom handles, use simple path
         if ((!segmentFlags || !segmentFlags.some(Boolean)) && !hasCustomHandles) {
             return GeoPath.fromPoints(vecs, closed);
         }
 
-        // Create anchors with zero handles initially
         const anchors = vecs.map(
             (v) => new GeoAnchor(v.clone(), new GeoVec(0, 0), new GeoVec(0, 0))
         );
 
-        // Helper to get point at index (with wrapping for closed paths)
-        const getPoint = (idx) => {
+        const getPoint = (idx: number): GeoVec => {
             if (closed) {
                 return vecs[(idx + vecs.length) % vecs.length];
             }
             return vecs[Math.max(0, Math.min(vecs.length - 1, idx))];
         };
 
-        // Helper to get anchor at index (with wrapping for closed paths)
-        const getAnchor = (idx) => {
+        const getAnchor = (idx: number): GeoAnchor => {
             if (closed) {
                 return anchors[(idx + anchors.length) % anchors.length];
             }
             return anchors[Math.max(0, Math.min(anchors.length - 1, idx))];
         };
 
-        // Helper to get custom handle
-        const getCustomHandle = (pointIdx, type) => {
-            if (customHandles && customHandles[pointIdx] && customHandles[pointIdx][type]) {
-                return customHandles[pointIdx][type];
+        const getCustomHandle = (pointIdx: number, type: 'handleIn' | 'handleOut'): { x: number; y: number } | null => {
+            if (customHandles && customHandles[pointIdx] && customHandles[pointIdx]![type]) {
+                return customHandles[pointIdx]![type];
             }
             return null;
         };
 
-        // Process each segment that should be curved
         for (let i = 0; i < segmentCount; i++) {
-            // Check for custom handles on this segment's endpoints
             const customOutHandle = getCustomHandle(i, 'handleOut');
             const customInHandle = getCustomHandle(closed ? (i + 1) % vecs.length : Math.min(i + 1, vecs.length - 1), 'handleIn');
 
-            // If custom handles exist, use them
             if (customOutHandle) {
                 getAnchor(i).handleOut = new GeoVec(customOutHandle.x, customOutHandle.y);
             }
@@ -310,15 +278,13 @@ export class PathShape extends Shape {
                 getAnchor(i + 1).handleIn = new GeoVec(customInHandle.x, customInHandle.y);
             }
 
-            // If this segment is not curved and no custom handles, skip auto-calculation
             if (!segmentFlags || !segmentFlags[i]) {
                 continue;
             }
 
-            const p1 = getPoint(i);       // Start of segment
-            const p2 = getPoint(i + 1);   // End of segment
+            const p1 = getPoint(i);
+            const p2 = getPoint(i + 1);
 
-            // Calculate segment vector and length
             const dx = p2.x - p1.x;
             const dy = p2.y - p1.y;
             const segmentLength = Math.sqrt(dx * dx + dy * dy);
@@ -327,13 +293,11 @@ export class PathShape extends Shape {
                 continue;
             }
 
-            // Handle length: 1/3 of segment creates nice smooth curve
             const handleLen = segmentLength / 3;
 
-            // === Calculate handleOut for anchor at p1 (if no custom handle) ===
             if (!customOutHandle) {
                 const p0 = getPoint(i - 1);
-                let outX, outY;
+                let outX: number, outY: number;
 
                 if (!closed && i === 0) {
                     outX = dx / segmentLength * handleLen;
@@ -353,10 +317,9 @@ export class PathShape extends Shape {
                 getAnchor(i).handleOut = new GeoVec(outX, outY);
             }
 
-            // === Calculate handleIn for anchor at p2 (if no custom handle) ===
             if (!customInHandle) {
                 const p3 = getPoint(i + 2);
-                let inX, inY;
+                let inX: number, inY: number;
 
                 if (!closed && i === segmentCount - 1) {
                     inX = -dx / segmentLength * handleLen;

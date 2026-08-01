@@ -1,25 +1,3 @@
-/**
- * @fileoverview Circular arc -- an open curve segment traced along a circle between two
- * angles.
- *
- * Angles are specified in degrees (not radians) for user friendliness in the Properties
- * Panel.  They are converted to radians internally inside toGeometryPath().  The arc
- * spans from startAngle to endAngle measured clockwise from the positive X axis (0 deg =
- * 3 o'clock, 90 deg = 6 o'clock in canvas coordinates where Y increases downward).
- *
- * The path is open (not closed), but containsPoint uses a FILL-based hit test rather
- * than a stroke-based one.  This works because {@link styleContainsPoint} treats the
- * implicit chord (the straight line from the last sampled point back to the first) as
- * part of the filled area.  The resulting hit region is a pie-slice / circular segment,
- * which is more generous than a thin stroke and feels more natural when clicking near
- * the arc's endpoints.
- *
- * The arc is sampled as 32 line segments.  32 is sufficient for smooth appearance on
- * arcs spanning up to 360 degrees; shorter arcs use proportionally fewer visible
- * segments but always produce 32 sample points regardless of the angle span.
- *
- * @module models/shapes/Arc
- */
 import { Shape } from './Shape.js';
 import { Color as GeoColor, Fill as GeoFill, Path as GeoPath, Vec as GeoVec, styleContainsPoint } from '../../geometry/index.js';
 /**

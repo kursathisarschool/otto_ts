@@ -1,4 +1,5 @@
-import { Shape } from './Shape.js';
+import { type Schema } from './schema.js';
+import { Bounds, Shape } from './Shape.js';
 import {
     Color as GeoColor,
     Fill as GeoFill,
@@ -8,16 +9,16 @@ import {
     styleContainsPoint
 } from '../../geometry/index.js';
 
-const HIT_TEST_STROKE = new GeoStroke(new GeoColor(0, 0, 0, 1), false, 6, 'centered', 'round', 'round', 4);
+const HIT_TEST_STROKE: GeoStroke = new GeoStroke(new GeoColor(0, 0, 0, 1), false, 6, 'centered', 'round', 'round', 4);
 
 /**
  * Spiral shape implementation
  * Bindable properties: centerX, centerY, startRadius, endRadius, turns
  */
 export class Spiral extends Shape {
-    static type = 'spiral';
+    static type: string = 'spiral';
 
-    static SCHEMA = {
+    static SCHEMA: Schema = {
         centerX: { type: 'number', default: (o) => o.position?.x ?? 0, bindable: true, translate: 'x', label: 'Center X' },
         centerY: { type: 'number', default: (o) => o.position?.y ?? 0, bindable: true, translate: 'y', label: 'Center Y' },
         startRadius: { type: 'number', default: 5, bindable: true, min: 0, label: 'Start Radius', aliases: ['start_radius'] },
@@ -25,7 +26,7 @@ export class Spiral extends Shape {
         turns: { type: 'number', default: 3, bindable: true, min: 0.25, step: 0.25, label: 'Turns' }
     };
 
-    getBounds() {
+    getBounds(): Bounds {
         const path = this.toGeometryPath();
         const box = path.tightBoundingBox() || path.looseBoundingBox();
         if (!box) {
@@ -39,33 +40,33 @@ export class Spiral extends Shape {
         };
     }
     
-    containsPoint(x, y) {
-        const path = this.toGeometryPath();
-        const stroke = HIT_TEST_STROKE.clone();
+    containsPoint(x: number, y: number): boolean {
+        const path: GeoPath = this.toGeometryPath();
+        const stroke: GeoStroke = HIT_TEST_STROKE.clone();
         stroke.width = 6;
         path.assignStroke(stroke);
         return styleContainsPoint(path, new GeoVec(x, y));
     }
     
-    render(ctx) {
-        const path = this.toGeometryPath();
+    render(ctx: CanvasRenderingContext2D): void {
+        const path: GeoPath = this.toGeometryPath();
         ctx.beginPath();
         path.toCanvasPath(ctx);
         ctx.stroke();
     }
 
-    toGeometryPath() {
+    toGeometryPath(): GeoPath {
         return GeoPath.fromPoints(this.getPoints().map(p => new GeoVec(p.x, p.y)), false);
     }
 
-    getPoints(segments = 100) {
-        const points = [];
-        const totalAngle = this.turns * Math.PI * 2;
+    getPoints(segments: number= 100): any[] {
+        const points: any[] = [];
+        const totalAngle: number = this.turns * Math.PI * 2;
         
         for (let i = 0; i <= segments; i++) {
-            const t = i / segments;
-            const angle = t * totalAngle;
-            const radius = this.startRadius + (this.endRadius - this.startRadius) * t;
+            const t: number = i / segments;
+            const angle: number = t * totalAngle;
+            const radius: number = this.startRadius + (this.endRadius - this.startRadius) * t;
             points.push({
                 x: this.centerX + Math.cos(angle) * radius,
                 y: this.centerY + Math.sin(angle) * radius

@@ -1,26 +1,23 @@
 import { ShapeDecorator } from './ShapeDecorator.js';
+import type { Shape } from '../Shape.js';
+
+interface ShadowOptions {
+    color?: string;
+    blur?: number;
+    offsetX?: number;
+    offsetY?: number;
+}
 
 /**
  * ShadowDecorator - Adds drop shadow effect to shapes
- *
- * Usage:
- * const shadowedCircle = new ShadowDecorator(circle, {
- *     color: 'rgba(0, 0, 0, 0.3)',
- *     blur: 10,
- *     offsetX: 5,
- *     offsetY: 5
- * });
  */
 export class ShadowDecorator extends ShapeDecorator {
-    /**
-     * @param {Shape} shape - The shape to decorate
-     * @param {Object} options - Shadow options
-     * @param {string} options.color - Shadow color (default: 'rgba(0, 0, 0, 0.3)')
-     * @param {number} options.blur - Shadow blur radius (default: 10)
-     * @param {number} options.offsetX - Horizontal shadow offset (default: 5)
-     * @param {number} options.offsetY - Vertical shadow offset (default: 5)
-     */
-    constructor(shape, options = {}) {
+    shadowColor: string;
+    shadowBlur: number;
+    shadowOffsetX: number;
+    shadowOffsetY: number;
+
+    constructor(shape: Shape | ShapeDecorator, options: ShadowOptions = {}) {
         super(shape);
         this.shadowColor = options.color || 'rgba(0, 0, 0, 0.3)';
         this.shadowBlur = options.blur !== undefined ? options.blur : 10;
@@ -28,30 +25,22 @@ export class ShadowDecorator extends ShapeDecorator {
         this.shadowOffsetY = options.offsetY !== undefined ? options.offsetY : 5;
     }
 
-    /**
-     * Render the shape with shadow effect
-     * @param {CanvasRenderingContext2D} ctx
-     */
-    render(ctx) {
+    /** Render the shape with shadow effect. */
+    render(ctx: CanvasRenderingContext2D): void {
         ctx.save();
 
-        // Apply shadow settings
         ctx.shadowColor = this.shadowColor;
         ctx.shadowBlur = this.shadowBlur;
         ctx.shadowOffsetX = this.shadowOffsetX;
         ctx.shadowOffsetY = this.shadowOffsetY;
 
-        // Render the wrapped shape with shadow
         this.wrappedShape.render(ctx);
 
         ctx.restore();
     }
 
-    /**
-     * Get expanded bounds to include shadow
-     * @returns {Object} {x, y, width, height}
-     */
-    getBounds() {
+    /** Get expanded bounds to include shadow. */
+    getBounds(): any {
         const bounds = this.wrappedShape.getBounds();
         const expansion = this.shadowBlur + Math.max(Math.abs(this.shadowOffsetX), Math.abs(this.shadowOffsetY));
 
@@ -63,7 +52,7 @@ export class ShadowDecorator extends ShapeDecorator {
         };
     }
 
-    cloneWithShape(newShape) {
+    cloneWithShape(newShape: Shape | ShapeDecorator): ShadowDecorator {
         return new ShadowDecorator(newShape, {
             color: this.shadowColor,
             blur: this.shadowBlur,
@@ -72,7 +61,7 @@ export class ShadowDecorator extends ShapeDecorator {
         });
     }
 
-    getDecoratorJSON() {
+    getDecoratorJSON(): any {
         return {
             type: 'shadow',
             color: this.shadowColor,
@@ -82,13 +71,8 @@ export class ShadowDecorator extends ShapeDecorator {
         };
     }
 
-    /**
-     * Create ShadowDecorator from JSON
-     * @param {Shape} shape
-     * @param {Object} json
-     * @returns {ShadowDecorator}
-     */
-    static fromJSON(shape, json) {
+    /** Create ShadowDecorator from JSON. */
+    static fromJSON(shape: Shape | ShapeDecorator, json: any): ShadowDecorator {
         return new ShadowDecorator(shape, {
             color: json.color,
             blur: json.blur,

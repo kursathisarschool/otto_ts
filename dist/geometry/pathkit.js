@@ -5,23 +5,18 @@
  */
 import { Anchor } from './Anchor.js';
 import { BoundingBox } from './BoundingBox.js';
-import { Geometry } from './Geometry.js';
 import { Group } from './Group.js';
 import { Path } from './Path.js';
 import { Shape } from './Shape.js';
 import { Vec } from './Vec.js';
+// PathKit has no official TypeScript type definitions, so we treat instances
+// as `any` throughout this file. Everything that touches our own geometry
+// classes (Anchor, Vec, Path, Shape, Group) is still fully typed.
 // PathKit is made to work with geometry in pixels, but most of our geometry
 // (e.g. in inches) is smaller. So we scale up our pkPaths by this factor.
 const scaleFactor = 10000;
 export let PathKit = null;
-/**
- * Initialize PathKit.
- * @param {Object} [options]
- * @param {Function} [options.PathKitInit] - PathKit init function
- * @param {Function} [options.locateFile] - Locate wasm file
- * @param {*} [options.PathKit] - Already-initialized PathKit instance
- * @returns {Promise<*>}
- */
+/** Initialize PathKit. */
 export const _initPathKit = async (options = {}) => {
     if (PathKit)
         return PathKit;
@@ -199,7 +194,7 @@ export const emptyPkPath = () => {
     numPkObjects++;
     return PathKit.NewPath();
 };
-export const toPkPath = (item, fillType = PathKit.FillType.EVENODD) => {
+export const toPkPath = (item, fillType = PathKit?.FillType?.EVENODD) => {
     numPkObjects++;
     const pkCommands = toPkCommands(item, scaleFactor);
     const pkPath = PathKit.FromCmds(pkCommands);

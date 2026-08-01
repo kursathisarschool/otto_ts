@@ -1,41 +1,15 @@
 /**
- * @fileoverview Circle -- the simplest closed shape in the Otto parametric design system.
- *
- * A circle is fully defined by its centre coordinates (centerX, centerY) and
- * radius — all bindable. Unlike Ellipse (which approximates with sampled
- * points), Circle uses the geometry library's native circle primitive
- * ({@link GeoPath.circle}), giving exact bounding boxes and crisp rendering
- * at any zoom level.
- *
+ * @fileoverview Circle -- the simplest closed shape in the Otto parametric
+ * design system.
  * @module models/shapes/Circle
  */
 import { Shape } from './Shape.js';
 import { Color as GeoColor, Fill as GeoFill, Path as GeoPath, Vec as GeoVec, styleContainsPoint } from '../../geometry/index.js';
-/**
- * Opaque black fill used exclusively for hit-testing.
- *
- * {@link styleContainsPoint} rasterises the path with a known style and
- * samples the resulting pixel, so the fill must be fully opaque. Allocated
- * once at module load; never mutated.
- *
- * @type {import('../../geometry/index.js').Fill}
- * @constant
- * @private
- */
+/** Opaque black fill used exclusively for hit-testing. */
 const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
-/**
- * Circle shape. Defined by a centre point and a radius.
- *
- * @extends Shape
- */
+/** Circle shape. Defined by a centre point and a radius. */
 export class Circle extends Shape {
-    /**
-     * Compute the axis-aligned bounding box by delegating to the geometry path.
-     * Prefers the tight (analytic) bounding box; falls back to the loose
-     * (sampled) box. Returns a zero-size box only for degenerate geometry.
-     *
-     * @returns {{x: number, y: number, width: number, height: number}}
-     */
+    /** Compute the axis-aligned bounding box by delegating to the geometry path. */
     getBounds() {
         const path = this.toGeometryPath();
         const box = path.tightBoundingBox() || path.looseBoundingBox();
@@ -49,37 +23,20 @@ export class Circle extends Shape {
             height: box.height()
         };
     }
-    /**
-     * Test whether the canvas-space point (x, y) falls inside this circle.
-     *
-     * @param {number} x
-     * @param {number} y
-     * @returns {boolean}
-     */
+    /** Test whether the canvas-space point (x, y) falls inside this circle. */
     containsPoint(x, y) {
         const path = this.toGeometryPath();
         path.assignFill(HIT_TEST_FILL);
         return styleContainsPoint(path, new GeoVec(x, y));
     }
-    /**
-     * Render the circle onto the given canvas context. Stroke/fill styles are
-     * set up by the renderer layer above this call.
-     *
-     * @param {CanvasRenderingContext2D} ctx
-     */
+    /** Render the circle onto the given canvas context. */
     render(ctx) {
         const path = this.toGeometryPath();
         ctx.beginPath();
         path.toCanvasPath(ctx);
         ctx.stroke();
     }
-    /**
-     * Build the geometry-library Path for this circle — the single source of
-     * truth for its geometry, shared by getBounds/containsPoint/render and
-     * the 3D mesh builder.
-     *
-     * @returns {import('../../geometry/Path.js').Path}
-     */
+    /** Build the geometry-library Path for this circle. */
     toGeometryPath() {
         return GeoPath.circle(new GeoVec(this.centerX, this.centerY), this.radius);
     }

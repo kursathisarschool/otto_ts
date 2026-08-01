@@ -1,25 +1,28 @@
 import { StorageBackend } from '../StorageBackend.js';
 
+interface CloudStorageOptions {
+    namespace?: string;
+    apiUrl?: string;
+    authToken?: string;
+    timeout?: number;
+}
+
+interface SyncResult {
+    uploaded?: string[];
+    downloaded?: string[];
+    failed: string[];
+}
+
 /**
  * CloudStorageBackend - Cloud Storage Implementation (Stub)
- *
- * Placeholder for remote cloud sync functionality.
- * To be implemented with actual backend service.
- *
- * Features planned:
- * - Remote save/load
- * - Multi-device sync
- * - Version history
- * - Collaboration support
  */
 export class CloudStorageBackend extends StorageBackend {
-    /**
-     * @param {Object} options
-     * @param {string} options.apiUrl - Cloud API endpoint
-     * @param {string} options.authToken - Authentication token
-     * @param {number} options.timeout - Request timeout in ms
-     */
-    constructor(options = {}) {
+    apiUrl: string | null;
+    authToken: string | null;
+    timeout: number;
+    private _isAuthenticated: boolean;
+
+    constructor(options: CloudStorageOptions = {}) {
         super(options);
         this.apiUrl = options.apiUrl || null;
         this.authToken = options.authToken || null;
@@ -27,33 +30,29 @@ export class CloudStorageBackend extends StorageBackend {
         this._isAuthenticated = false;
     }
 
-    getType() {
+    getType(): string {
         return 'cloud';
     }
 
-    async isAvailable() {
-        // Cloud storage requires configuration
+    async isAvailable(): Promise<boolean> {
         if (!this.apiUrl) {
             return false;
         }
 
-        // Check if we can reach the API
         try {
             const response = await this._fetch('/health', { method: 'GET' });
             return response.ok;
-        } catch (error) {
+        } catch (error: any) {
             console.warn('Cloud storage not available:', error.message);
             return false;
         }
     }
 
-    async getMaxSize() {
-        // Cloud storage typically has higher limits
-        // Could be configured server-side
-        return 100 * 1024 * 1024; // 100MB default
+    async getMaxSize(): Promise<number> {
+        return 100 * 1024 * 1024;
     }
 
-    async getUsedSize() {
+    async getUsedSize(): Promise<number> {
         if (!this._isAuthenticated) {
             return 0;
         }
@@ -68,12 +67,8 @@ export class CloudStorageBackend extends StorageBackend {
         }
     }
 
-    /**
-     * Authenticate with the cloud service
-     * @param {string} token - Auth token
-     * @returns {Promise<boolean>}
-     */
-    async authenticate(token) {
+    /** Authenticate with the cloud service. */
+    async authenticate(token: string): Promise<boolean> {
         this.authToken = token;
 
         try {
@@ -91,15 +86,12 @@ export class CloudStorageBackend extends StorageBackend {
         }
     }
 
-    /**
-     * Check if authenticated
-     * @returns {boolean}
-     */
-    isAuthenticated() {
+    /** Check if authenticated. */
+    isAuthenticated(): boolean {
         return this._isAuthenticated;
     }
 
-    async save(key, data) {
+    async save(key: string, data: any): Promise<boolean> {
         if (!this._isAuthenticated) {
             console.warn('Cloud storage: not authenticated');
             return false;
@@ -122,7 +114,7 @@ export class CloudStorageBackend extends StorageBackend {
         }
     }
 
-    async load(key) {
+    async load(key: string): Promise<any> {
         if (!this._isAuthenticated) {
             console.warn('Cloud storage: not authenticated');
             return null;
@@ -136,7 +128,7 @@ export class CloudStorageBackend extends StorageBackend {
 
             if (!response.ok) {
                 if (response.status === 404) {
-                    return null; // Not found
+                    return null;
                 }
                 throw new Error(`HTTP ${response.status}`);
             }
@@ -149,7 +141,7 @@ export class CloudStorageBackend extends StorageBackend {
         }
     }
 
-    async delete(key) {
+    async delete(key: string): Promise<boolean> {
         if (!this._isAuthenticated) {
             console.warn('Cloud storage: not authenticated');
             return false;
@@ -168,7 +160,7 @@ export class CloudStorageBackend extends StorageBackend {
         }
     }
 
-    async exists(key) {
+    async exists(key: string): Promise<boolean> {
         if (!this._isAuthenticated) {
             return false;
         }
@@ -185,7 +177,7 @@ export class CloudStorageBackend extends StorageBackend {
         }
     }
 
-    async listKeys() {
+    async listKeys(): Promise<string[]> {
         if (!this._isAuthenticated) {
             return [];
         }
@@ -201,15 +193,15 @@ export class CloudStorageBackend extends StorageBackend {
             const prefix = `${this.namespace}_`;
 
             return (data.keys || [])
-                .filter(key => key.startsWith(prefix))
-                .map(key => this.getShortKey(key));
+                .filter((key: string) => key.startsWith(prefix))
+                .map((key: string) => this.getShortKey(key));
         } catch (error) {
             console.error('Cloud listKeys error:', error);
             return [];
         }
     }
 
-    async clear() {
+    async clear(): Promise<boolean> {
         if (!this._isAuthenticated) {
             return false;
         }
@@ -226,20 +218,15 @@ export class CloudStorageBackend extends StorageBackend {
         }
     }
 
-    /**
-     * Internal fetch wrapper with auth and timeout
-     * @param {string} path
-     * @param {Object} options
-     * @returns {Promise<Response>}
-     */
-    async _fetch(path, options = {}) {
+    /** Internal fetch wrapper with auth and timeout. */
+    async _fetch(path: string, options: RequestInit = {}): Promise<Response> {
         if (!this.apiUrl) {
             throw new Error('Cloud API URL not configured');
         }
 
         const url = `${this.apiUrl}${path}`;
-        const headers = {
-            ...options.headers
+        const headers: Record<string, string> = {
+            ...(options.headers as Record<string, string> | undefined)
         };
 
         if (this.authToken) {
@@ -261,15 +248,11 @@ export class CloudStorageBackend extends StorageBackend {
         }
     }
 
-    /**
-     * Sync local changes to cloud
-     * @param {StorageBackend} localBackend - Local storage backend
-     * @returns {Promise<Object>} Sync result
-     */
-    async syncFromLocal(localBackend) {
+    /** Sync local changes to cloud. */
+    async syncFromLocal(localBackend: StorageBackend): Promise<SyncResult> {
         const localKeys = await localBackend.listKeys();
-        const uploaded = [];
-        const failed = [];
+        const uploaded: string[] = [];
+        const failed: string[] = [];
 
         for (const key of localKeys) {
             try {
@@ -288,15 +271,11 @@ export class CloudStorageBackend extends StorageBackend {
         return { uploaded, failed };
     }
 
-    /**
-     * Download cloud data to local
-     * @param {StorageBackend} localBackend - Local storage backend
-     * @returns {Promise<Object>} Sync result
-     */
-    async syncToLocal(localBackend) {
+    /** Download cloud data to local. */
+    async syncToLocal(localBackend: StorageBackend): Promise<SyncResult> {
         const cloudKeys = await this.listKeys();
-        const downloaded = [];
-        const failed = [];
+        const downloaded: string[] = [];
+        const failed: string[] = [];
 
         for (const key of cloudKeys) {
             try {

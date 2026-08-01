@@ -14,9 +14,10 @@
  *
  * @module models/shapes/Star
  */
-
-import { Shape } from './Shape.js';
+import { type Schema } from './schema.js';
+import { Bounds, Shape } from './Shape.js';
 import {
+    BoundingBox,
     Color as GeoColor,
     Fill as GeoFill,
     Path as GeoPath,
@@ -30,7 +31,7 @@ import {
  * @constant
  * @private
  */
-const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
+const HIT_TEST_FILL: GeoFill = new GeoFill(new GeoColor(0, 0, 0, 1));
 
 /**
  * N-pointed star shape.
@@ -43,7 +44,7 @@ const HIT_TEST_FILL = new GeoFill(new GeoColor(0, 0, 0, 1));
 export class Star extends Shape {
     static type = 'star';
 
-    static SCHEMA = {
+    static SCHEMA: Schema = {
         centerX: { type: 'number', default: (o) => o.position?.x ?? 0, bindable: true, translate: 'x', label: 'Center X' },
         centerY: { type: 'number', default: (o) => o.position?.y ?? 0, bindable: true, translate: 'y', label: 'Center Y' },
         outerRadius: { type: 'number', default: 20, bindable: true, min: 0, label: 'Outer Radius', aliases: ['outer_radius'] },
@@ -55,9 +56,9 @@ export class Star extends Shape {
      * Compute the AABB by delegating to the geometry path.
      * @returns {{x: number, y: number, width: number, height: number}}
      */
-    getBounds() {
-        const path = this.toGeometryPath();
-        const box = path.tightBoundingBox() || path.looseBoundingBox();
+    getBounds():Bounds {
+        const path:GeoPath = this.toGeometryPath();
+        const box: BoundingBox = path.tightBoundingBox() || path.looseBoundingBox();
         if (!box) {
             return { x: 0, y: 0, width: 0, height: 0 };
         }
@@ -76,8 +77,8 @@ export class Star extends Shape {
      * @param {number} y - Y coordinate to test.
      * @returns {boolean} True if the point is inside or on the star boundary.
      */
-    containsPoint(x, y) {
-        const path = this.toGeometryPath();
+    containsPoint(x: number, y: number): boolean {
+        const path:GeoPath = this.toGeometryPath();
         path.assignFill(HIT_TEST_FILL);
         return styleContainsPoint(path, new GeoVec(x, y));
     }
@@ -86,8 +87,8 @@ export class Star extends Shape {
      * Render the star outline onto the canvas.
      * @param {CanvasRenderingContext2D} ctx - The Otto canvas 2D context.
      */
-    render(ctx) {
-        const path = this.toGeometryPath();
+    render(ctx: CanvasRenderingContext2D):void {
+        const path:GeoPath = this.toGeometryPath();
         ctx.beginPath();
         path.toCanvasPath(ctx);
         ctx.stroke();
@@ -111,19 +112,19 @@ export class Star extends Shape {
      *
      * @returns {import('../../geometry/Path.js').Path} A closed 2*P-vertex GeoPath.
      */
-    toGeometryPath() {
-        const points = [];
-        const numPoints = Math.max(3, Math.floor(this.points));
-        const angleStep = (2 * Math.PI) / numPoints;
+    toGeometryPath(): GeoPath {
+        const points: any[] = [];
+        const numPoints: number = Math.max(3, Math.floor(this.points));
+        const angleStep : number = (2 * Math.PI) / numPoints;
 
         // Start at top (90 degrees offset)
-        const startAngle = -Math.PI / 2;
+        const startAngle: number = -Math.PI / 2;
 
         for (let i = 0; i < numPoints * 2; i++) {
-            const angle = startAngle + (i * angleStep) / 2;
-            const radius = i % 2 === 0 ? this.outerRadius : this.innerRadius;
-            const x = this.centerX + radius * Math.cos(angle);
-            const y = this.centerY + radius * Math.sin(angle);
+            const angle: number= startAngle + (i * angleStep) / 2;
+            const radius: number = i % 2 === 0 ? this.outerRadius : this.innerRadius;
+            const x: number = this.centerX + radius * Math.cos(angle);
+            const y: number = this.centerY + radius * Math.sin(angle);
             points.push(new GeoVec(x, y));
         }
 

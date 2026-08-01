@@ -7,19 +7,7 @@ import { Anchor } from '../Anchor.js';
 import { Path } from '../Path.js';
 import { Vec } from '../Vec.js';
 import { cubicFromSegment, isSegmentLinear, lineFromSegment, positionAndTimeAtClosestPointOnCubic, positionAndTimeAtClosestPointOnLine, segmentLength, } from '../Segment.js';
-/**
- * Edge represents one path segment between two anchors.
- */
 export class Edge {
-    /**
-     * Create an edge.
-     * @param {Anchor} anchor1
-     * @param {Anchor} anchor2
-     * @param {Object} [options]
-     * @param {number} [options.index=0] - Segment index within the path
-     * @param {number} [options.pathIndex=0] - Path index within a multi-path shape
-     * @param {boolean} [options.closed=false] - Whether the parent path is closed
-     */
     constructor(anchor1, anchor2, options = {}) {
         this.anchor1 = anchor1;
         this.anchor2 = anchor2;

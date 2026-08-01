@@ -1,11 +1,6 @@
 /**
  * ShapeRegistry using Registry Pattern
- * Creates shape instances based on type with dynamic registration support
- *
- * Benefits:
- * - Open/Closed Principle: Add new shapes without modifying registry code
- * - Runtime registration: Register shapes dynamically
- * - Plugin support: Third-party shapes can register themselves
+ * @module models/shapes/ShapeRegistry
  */
 import { Circle } from './Circle.js';
 import { Line } from './Line.js';
@@ -27,73 +22,53 @@ import { Arrow } from './Arrow.js';
 import { ChamferRectangle } from './ChamferRectangle.js';
 import { createBindingFromJSON } from '../BindingRegistry.js';
 import EventBus, { EVENTS } from '../../events/EventBus.js';
+import type { Shape } from './Shape.js';
 
-/**
- * Shape registry entry
- */
+type CreateFunction = (id: string, position: { x: number; y: number }, options: any) => Shape;
+type FromJSONFunction = (json: any) => Shape;
+
+/** Shape registry entry. */
 class ShapeRegistryEntry {
-    constructor(createFunction, fromJSONFunction) {
+    create: CreateFunction;
+    fromJSON: FromJSONFunction;
+
+    constructor(createFunction: CreateFunction, fromJSONFunction: FromJSONFunction) {
         this.create = createFunction;
         this.fromJSON = fromJSONFunction;
     }
 }
 
 export class ShapeRegistry {
-    // Private registry: Map<type, ShapeRegistryEntry>
-    static #registry = new Map();
-
-    // Counter for generating readable IDs per shape type
-    static #idCounters = new Map();
-
-    // True once the built-in shapes are registered; gates the
-    // SHAPE_TYPE_REGISTERED event so the bulk static registration stays quiet.
+    static #registry: Map<string, ShapeRegistryEntry> = new Map();
+    static #idCounters: Map<string, number> = new Map();
     static #initialized = false;
 
-    // Initialize registry with default shapes. Each class carries its own
-    // static type and SCHEMA; registerClass derives the factory and fromJSON
-    // from those, so registering a shape is a single line.
     static {
         [
             Circle, Line, Rectangle, PathShape, Polygon, Star, Triangle,
             Ellipse, Arc, RoundedRectangle, Donut, Cross, Gear, Spiral,
             Wave, Slot, Arrow, ChamferRectangle
-        ].forEach(cls => this.registerClass(cls));
+        ].forEach(cls => this.registerClass(cls as any));
         this.#initialized = true;
     }
 
     /**
      * Register a schema-driven Shape subclass. The class must define
-     * `static type` and extend Shape; the create factory folds the drop
-     * position into the options bag (schema defaults may anchor to it) and
-     * fromJSON dispatches to the class's own static (kept as an arrow so the
-     * static method receives the class as `this`).
-     *
-     * @param {typeof import('./Shape.js').Shape} ShapeClass
+     * static type and extend Shape.
      */
-    static registerClass(ShapeClass) {
+    static registerClass(ShapeClass: typeof Shape & { type: string }): void {
         if (!ShapeClass || !ShapeClass.type) {
             throw new Error('registerClass requires a Shape subclass with a static type');
         }
         this.register(
             ShapeClass.type,
-            (id, position, options) => new ShapeClass(id, { ...options, position }),
-            (json) => ShapeClass.fromJSON(json)
+            (id: string, position: any, options: any) => new (ShapeClass as any)(id, { ...options, position }),
+            (json: any) => (ShapeClass as any).fromJSON(json)
         );
     }
 
-    /**
-     * Register a new shape type (Registry Pattern)
-     * @param {string} type - Shape type identifier
-     * @param {Function} createFunction - Function(id, position, options) => Shape
-     * @param {Function} fromJSONFunction - Static fromJSON method
-     *
-     * Example:
-     * ShapeRegistry.register('triangle',
-     *     (id, pos, opts) => new Triangle(id, pos, opts.x, opts.y, opts.size),
-     *     Triangle.fromJSON
-     * );
-     */
-    static register(type, createFunction, fromJSONFunction) {
+    /** Register a new shape type (Registry Pattern). */
+    static register(type: string, createFunction: CreateFunction, fromJSONFunction: FromJSONFunction): void {
         if (!type || typeof type !== 'string') {
             throw new Error('Type must be a non-empty string');
         }
@@ -109,63 +84,34 @@ export class ShapeRegistry {
             createFunction,
             fromJSONFunction
         ));
-        // Notify listeners (e.g. ShapeLibrary) that the type set changed.
-        // The static-block bulk registration runs before any listeners are
-        // attached, so this only matters for runtime/plugin registrations.
         this.#notifyRegistered(normalizedType);
     }
 
-    /**
-     * Emit SHAPE_TYPE_REGISTERED so listeners (e.g. ShapeLibrary) refresh.
-     * Suppressed during the built-in bulk registration (no listeners yet).
-     * EventBus is a leaf module, so importing it here creates no cycle.
-     * @param {string} type
-     * @private
-     */
-    static #notifyRegistered(type) {
-        if (!this.#initialized) return; // stay quiet during bulk static setup
+    /** Emit SHAPE_TYPE_REGISTERED so listeners (e.g. ShapeLibrary) refresh. */
+    static #notifyRegistered(type: string): void {
+        if (!this.#initialized) return;
         EventBus.emit(EVENTS.SHAPE_TYPE_REGISTERED, { type });
     }
 
-    /**
-     * Unregister a shape type (useful for testing and plugin cleanup).
-     * Accepts a type string or a Shape subclass (symmetric with
-     * {@link ShapeRegistry.registerClass}); ignores anything else rather than
-     * throwing, so best-effort cleanup paths stay robust.
-     * @param {string|Function} type
-     */
-    static unregister(type) {
-        const typeName = (typeof type === 'function' && type.type) ? type.type : type;
+    /** Unregister a shape type. */
+    static unregister(type: string | (typeof Shape & { type: string })): void {
+        const typeName = (typeof type === 'function' && (type as any).type) ? (type as any).type : type;
         if (!typeName || typeof typeName !== 'string') return;
         this.#registry.delete(typeName.toLowerCase());
     }
 
-    /**
-     * Check if a shape type is registered
-     * @param {string} type
-     * @returns {boolean}
-     */
-    static isRegistered(type) {
+    /** Check if a shape type is registered. */
+    static isRegistered(type: string): boolean {
         return this.#registry.has(type.toLowerCase());
     }
 
-    /**
-     * Get available shape types
-     * @returns {Array<string>}
-     */
-    static getAvailableTypes() {
+    /** Get available shape types. */
+    static getAvailableTypes(): string[] {
         return Array.from(this.#registry.keys());
     }
 
-    /**
-     * Create a shape by type (Registry Pattern - no switch statement!)
-     * @param {string} type
-     * @param {Object} position
-     * @param {Object} options - Additional options for shape creation
-     * @param {ShapeStore} shapeStore - Optional shape store to check existing IDs
-     * @returns {Shape}
-     */
-    static create(type, position = { x: 0, y: 0 }, options = {}, shapeStore = null) {
+    /** Create a shape by type (Registry Pattern - no switch statement!). */
+    static create(type: string, position: { x: number; y: number } = { x: 0, y: 0 }, options: any = {}, shapeStore: any = null): Shape {
         const normalizedType = type.toLowerCase();
         const entry = this.#registry.get(normalizedType);
 
@@ -182,12 +128,8 @@ export class ShapeRegistry {
         return entry.create(id, position, options);
     }
 
-    /**
-     * Create shape from JSON (Registry Pattern - no switch statement!)
-     * @param {Object} json
-     * @returns {Shape}
-     */
-    static fromJSON(json) {
+    /** Create shape from JSON (Registry Pattern - no switch statement!). */
+    static fromJSON(json: any): Shape {
         if (!json || !json.type) {
             throw new Error('Invalid shape JSON: type is required');
         }
@@ -203,10 +145,8 @@ export class ShapeRegistry {
             );
         }
 
-        // Use registered fromJSON method
         const shape = entry.fromJSON(json);
 
-        // Restore bindings (common for all shapes)
         if (json.bindings) {
             Object.keys(json.bindings).forEach(property => {
                 try {
@@ -221,27 +161,18 @@ export class ShapeRegistry {
         return shape;
     }
 
-    /**
-     * Generate a readable ID for a shape (e.g., "Circle 1", "Rectangle 2")
-     * @param {string} type
-     * @param {ShapeStore} shapeStore - Optional shape store to check existing IDs
-     * @returns {string}
-     */
-    static generateId(type, shapeStore = null) {
-        // Capitalize first letter of type
+    /** Generate a readable ID for a shape (e.g., "Circle 1", "Rectangle 2"). */
+    static generateId(type: string, shapeStore: any = null): string {
         const capitalizedType = type.charAt(0).toUpperCase() + type.slice(1);
 
-        // Get current counter for this type
         let counter = this.#idCounters.get(type) || 0;
 
-        // If shapeStore is provided, find the highest number for this type
         if (shapeStore && typeof shapeStore.getAll === 'function') {
             const allShapes = shapeStore.getAll();
-            const existingNumbers = [];
+            const existingNumbers: number[] = [];
 
-            allShapes.forEach(shape => {
+            allShapes.forEach((shape: Shape) => {
                 if (shape.type === type) {
-                    // Try to extract number from existing ID
                     const match = shape.id.match(new RegExp(`^${capitalizedType}\\s+(\\d+)$`, 'i'));
                     if (match) {
                         existingNumbers.push(parseInt(match[1], 10));
@@ -254,17 +185,14 @@ export class ShapeRegistry {
             }
         }
 
-        // Increment counter
         counter++;
         this.#idCounters.set(type, counter);
 
         return `${capitalizedType} ${counter}`;
     }
 
-    /**
-     * Reset ID counters (useful for testing or when clearing all shapes)
-     */
-    static resetIdCounters() {
+    /** Reset ID counters. */
+    static resetIdCounters(): void {
         this.#idCounters.clear();
     }
 }

@@ -2,9 +2,6 @@
  * Snap Strategy using Strategy Pattern
  * Handles different snapping behaviors for shapes
  */
-/**
- * Base snap strategy interface
- */
 export class SnapStrategy {
     /**
      * Snap coordinates
@@ -29,9 +26,6 @@ export class NoSnap extends SnapStrategy {
  * Snap to grid
  */
 export class GridSnap extends SnapStrategy {
-    /**
-     * @param {number} gridSize - Grid cell size
-     */
     constructor(gridSize = 20) {
         super();
         this.gridSize = gridSize;

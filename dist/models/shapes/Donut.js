@@ -1,36 +1,5 @@
-/**
- * @fileoverview Donut (annulus / washer) -- a ring-shaped region between two concentric
- * circles.
- *
- * The Donut deviates from the standard shape patterns in three notable ways:
- *
- *   1. getBounds() is computed analytically (centre +/- outerRadius) instead of
- *      delegating to a geometry path.  The bounding box of a circle is trivially known,
- *      so there is no reason to pay the cost of path construction just for bounds.
- *
- *   2. containsPoint() uses a direct Euclidean distance check:
- *          innerRadius <= dist(point, centre) <= outerRadius
- *      This is O(1) and exact, whereas the path-based styleContainsPoint approach would
- *      require constructing the full winding-rule path.  The distance check is both faster
- *      and more accurate for circular annuli.
- *
- *   3. The geometry path (used for rendering, edge extraction, and boolean operations)
- *      encodes the hole via the non-zero winding rule.  The outer circle is traced
- *      counter-clockwise (forward), a zero-length "bridge" segment connects it to the
- *      inner circle's starting point, and the inner circle is traced clockwise (backward,
- *      i.e. the loop index decrements).  When this single closed path is filled with the
- *      non-zero winding rule, the inner region winds to zero and is left unfilled --
- *      producing the hole.
- *
- * The render() method uses the native canvas arc() API with the {@code anticlockwise}
- * flag set to true for the inner circle.  This achieves the same winding-rule hole
- * effect using the browser's built-in arc primitives, which is faster than emitting
- * the sampled polygon path.
- *
- * @module models/shapes/Donut
- */
 import { Shape } from './Shape.js';
-import { Color as GeoColor, Fill as GeoFill, Path as GeoPath, Vec as GeoVec, styleContainsPoint } from '../../geometry/index.js';
+import { Color as GeoColor, Fill as GeoFill, Path as GeoPath, Vec as GeoVec } from '../../geometry/index.js';
 /**
  * Opaque black fill for hit-testing.  Declared here for consistency with other shape
  * modules even though Donut does not use it in containsPoint (which uses a direct

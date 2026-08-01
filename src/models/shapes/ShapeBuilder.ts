@@ -1,33 +1,26 @@
 import { ShapeRegistry } from './ShapeRegistry.js';
+import type { Shape } from './Shape.js';
+import type { Binding } from '../Binding.js';
+
+interface Decorator {
+    type: string;
+    options: any;
+}
 
 /**
  * ShapeBuilder - Builder Pattern Implementation
  *
  * Provides fluent API for complex shape construction with validation.
- *
- * Benefits:
- * - Readable: Chainable methods make code self-documenting
- * - Validation: Validates during build, catches errors early
- * - Flexible: Optional properties, sensible defaults
- * - Extensible: Easy to add new configuration options
- *
- * Example usage:
- * ```javascript
- * const circle = new ShapeBuilder('circle')
- *     .withId('my-circle')
- *     .at(100, 100)
- *     .withProperty('radius', 50)
- *     .withBinding('radius', new ParameterBinding('size'))
- *     .withDecorator('fill', { color: '#3498db' })
- *     .withDecorator('shadow', { blur: 10 })
- *     .build();
- * ```
  */
 export class ShapeBuilder {
-    /**
-     * @param {string} type - Shape type (e.g., 'circle', 'rectangle')
-     */
-    constructor(type) {
+    _type: string;
+    _id: string | null;
+    _position: { x: number; y: number };
+    _properties: Record<string, any>;
+    _bindings: Record<string, Binding>;
+    _decorators: Decorator[];
+
+    constructor(type: string) {
         if (!type) {
             throw new Error('ShapeBuilder requires a shape type');
         }
@@ -40,157 +33,89 @@ export class ShapeBuilder {
         this._decorators = [];
     }
 
-    /**
-     * Set custom ID for the shape
-     * @param {string} id
-     * @returns {ShapeBuilder}
-     */
-    withId(id) {
+    /** Set custom ID for the shape. */
+    withId(id: string): this {
         this._id = id;
         return this;
     }
 
-    /**
-     * Set position of the shape
-     * @param {number} x
-     * @param {number} y
-     * @returns {ShapeBuilder}
-     */
-    at(x, y) {
+    /** Set position of the shape. */
+    at(x: number, y: number): this {
         this._position = { x, y };
         return this;
     }
 
-    /**
-     * Set position using an object
-     * @param {Object} position - {x, y}
-     * @returns {ShapeBuilder}
-     */
-    atPosition(position) {
+    /** Set position using an object. */
+    atPosition(position: { x: number; y: number }): this {
         this._position = { ...position };
         return this;
     }
 
-    /**
-     * Set a property value
-     * @param {string} name - Property name
-     * @param {*} value - Property value
-     * @returns {ShapeBuilder}
-     */
-    withProperty(name, value) {
+    /** Set a property value. */
+    withProperty(name: string, value: any): this {
         this._properties[name] = value;
         return this;
     }
 
-    /**
-     * Set multiple properties at once
-     * @param {Object} properties - Key-value pairs
-     * @returns {ShapeBuilder}
-     */
-    withProperties(properties) {
+    /** Set multiple properties at once. */
+    withProperties(properties: Record<string, any>): this {
         Object.assign(this._properties, properties);
         return this;
     }
 
-    /**
-     * Set a binding for a property
-     * @param {string} property - Property name
-     * @param {Binding} binding - Binding instance
-     * @returns {ShapeBuilder}
-     */
-    withBinding(property, binding) {
+    /** Set a binding for a property. */
+    withBinding(property: string, binding: Binding): this {
         this._bindings[property] = binding;
         return this;
     }
 
-    /**
-     * Set multiple bindings at once
-     * @param {Object} bindings - Map of property to Binding
-     * @returns {ShapeBuilder}
-     */
-    withBindings(bindings) {
+    /** Set multiple bindings at once. */
+    withBindings(bindings: Record<string, Binding>): this {
         Object.assign(this._bindings, bindings);
         return this;
     }
 
-    /**
-     * Add a decorator to be applied after building
-     * @param {string} type - Decorator type ('shadow', 'fill', 'border')
-     * @param {Object} options - Decorator options
-     * @returns {ShapeBuilder}
-     */
-    withDecorator(type, options = {}) {
+    /** Add a decorator to be applied after building. */
+    withDecorator(type: string, options: any = {}): this {
         this._decorators.push({ type, options });
         return this;
     }
 
-    /**
-     * Add shadow decorator
-     * @param {Object} options - Shadow options
-     * @returns {ShapeBuilder}
-     */
-    withShadow(options = {}) {
+    /** Add shadow decorator. */
+    withShadow(options: any = {}): this {
         return this.withDecorator('shadow', options);
     }
 
-    /**
-     * Add fill decorator
-     * @param {Object} options - Fill options
-     * @returns {ShapeBuilder}
-     */
-    withFill(options = {}) {
+    /** Add fill decorator. */
+    withFill(options: any = {}): this {
         return this.withDecorator('fill', options);
     }
 
-    /**
-     * Add border decorator
-     * @param {Object} options - Border options
-     * @returns {ShapeBuilder}
-     */
-    withBorder(options = {}) {
+    /** Add border decorator. */
+    withBorder(options: any = {}): this {
         return this.withDecorator('border', options);
     }
 
-    // Convenience methods for common shape types
-
-    /**
-     * Set circle-specific properties
-     * @param {number} centerX
-     * @param {number} centerY
-     * @param {number} radius
-     * @returns {ShapeBuilder}
-     */
-    asCircle(centerX, centerY, radius) {
+    /** Set circle-specific properties. */
+    asCircle(centerX: number, centerY: number, radius: number): this {
         this._type = 'circle';
         return this.withProperties({ centerX, centerY, radius });
     }
 
-    /**
-     * Set rectangle-specific properties
-     * @param {number} x
-     * @param {number} y
-     * @param {number} width
-     * @param {number} height
-     * @returns {ShapeBuilder}
-     */
-    asRectangle(x, y, width, height) {
+    /** Set rectangle-specific properties. */
+    asRectangle(x: number, y: number, width: number, height: number): this {
         this._type = 'rectangle';
         return this.withProperties({ x, y, width, height });
     }
 
-    /**
-     * Validate the builder configuration
-     * @returns {Array<string>} - Array of validation errors (empty if valid)
-     */
-    validate() {
-        const errors = [];
+    /** Validate the builder configuration. */
+    validate(): string[] {
+        const errors: string[] = [];
 
-        // Check type is registered
         if (!ShapeRegistry.isRegistered(this._type)) {
             errors.push(`Unknown shape type: "${this._type}". Available types: ${ShapeRegistry.getAvailableTypes().join(', ')}`);
         }
 
-        // Type-specific validation
         if (this._type === 'circle') {
             if (this._properties.radius !== undefined && this._properties.radius <= 0) {
                 errors.push('Circle radius must be positive');
@@ -209,33 +134,24 @@ export class ShapeBuilder {
         return errors;
     }
 
-    /**
-     * Build the shape with all configured options
-     * @returns {Promise<Shape>} - The constructed (and optionally decorated) shape
-     * @throws {Error} - If validation fails
-     */
-    async build() {
-        // Validate
+    /** Build the shape with all configured options. */
+    async build(): Promise<Shape> {
         const errors = this.validate();
         if (errors.length > 0) {
             throw new Error(`ShapeBuilder validation failed:\n- ${errors.join('\n- ')}`);
         }
 
-        // Build options object
         const options = {
             ...this._properties,
             id: this._id
         };
 
-        // Create the shape
         let shape = ShapeRegistry.create(this._type, this._position, options);
 
-        // Apply bindings
         for (const [property, binding] of Object.entries(this._bindings)) {
             shape.setBinding(property, binding);
         }
 
-        // Apply decorators
         if (this._decorators.length > 0) {
             shape = await this.applyDecorators(shape);
         }
@@ -243,33 +159,24 @@ export class ShapeBuilder {
         return shape;
     }
 
-    /**
-     * Build synchronously (without decorators)
-     * Use this when you don't need decorators and want synchronous execution
-     * @returns {Shape}
-     */
-    buildSync() {
-        // Validate
+    /** Build synchronously (without decorators). */
+    buildSync(): Shape {
         const errors = this.validate();
         if (errors.length > 0) {
             throw new Error(`ShapeBuilder validation failed:\n- ${errors.join('\n- ')}`);
         }
 
-        // Build options object
         const options = {
             ...this._properties,
             id: this._id
         };
 
-        // Create the shape
-        let shape = ShapeRegistry.create(this._type, this._position, options);
+        const shape = ShapeRegistry.create(this._type, this._position, options);
 
-        // Apply bindings
         for (const [property, binding] of Object.entries(this._bindings)) {
             shape.setBinding(property, binding);
         }
 
-        // Warn if decorators were specified but not applied
         if (this._decorators.length > 0) {
             console.warn('ShapeBuilder.buildSync() does not apply decorators. Use build() instead.');
         }
@@ -277,12 +184,8 @@ export class ShapeBuilder {
         return shape;
     }
 
-    /**
-     * Apply decorators to the shape
-     * @param {Shape} shape
-     * @returns {Promise<Shape>}
-     */
-    async applyDecorators(shape) {
+    /** Apply decorators to the shape. */
+    async applyDecorators(shape: Shape): Promise<Shape> {
         let decoratedShape = shape;
 
         for (const { type, options } of this._decorators) {
@@ -293,12 +196,8 @@ export class ShapeBuilder {
         return decoratedShape;
     }
 
-    /**
-     * Get decorator class by type
-     * @param {string} type
-     * @returns {Promise<Class>}
-     */
-    async getDecoratorClass(type) {
+    /** Get decorator class by type. */
+    async getDecoratorClass(type: string): Promise<any> {
         switch (type) {
             case 'shadow': {
                 const { ShadowDecorator } = await import('./decorators/ShadowDecorator.js');
@@ -317,11 +216,8 @@ export class ShapeBuilder {
         }
     }
 
-    /**
-     * Create a copy of this builder
-     * @returns {ShapeBuilder}
-     */
-    clone() {
+    /** Create a copy of this builder. */
+    clone(): ShapeBuilder {
         const cloned = new ShapeBuilder(this._type);
         cloned._id = this._id;
         cloned._position = { ...this._position };
@@ -331,11 +227,8 @@ export class ShapeBuilder {
         return cloned;
     }
 
-    /**
-     * Reset the builder to initial state
-     * @returns {ShapeBuilder}
-     */
-    reset() {
+    /** Reset the builder to initial state. */
+    reset(): this {
         this._id = null;
         this._position = { x: 0, y: 0 };
         this._properties = {};
@@ -345,22 +238,16 @@ export class ShapeBuilder {
     }
 }
 
-/**
- * Convenience function to create a ShapeBuilder
- * @param {string} type
- * @returns {ShapeBuilder}
- */
-export function shape(type) {
+/** Convenience function to create a ShapeBuilder. */
+export function shape(type: string): ShapeBuilder {
     return new ShapeBuilder(type);
 }
 
-/**
- * Convenience functions for common shapes
- */
-export function circle() {
+/** Convenience functions for common shapes. */
+export function circle(): ShapeBuilder {
     return new ShapeBuilder('circle');
 }
 
-export function rectangle() {
+export function rectangle(): ShapeBuilder {
     return new ShapeBuilder('rectangle');
 }
